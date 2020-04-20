@@ -1,0 +1,257 @@
+﻿@page "/timeline-er"
+@inject DataServiceER DataSvc
+@inject HelpersService Helpers
+@inject IJSRuntime jsRuntime
+
+
+
+@if (IsLoading)
+{
+    <p>Page is loading...</p>
+}
+
+@if (IsLoading == false && LevelsAvailable != null)
+{
+    <select id="structureTypes"
+            class="form-control standard-dropdown"
+            @onchange="(e) => OnSelectStructureType(e.Value.ToString())">
+        @foreach (StructureType structureType in Enum.GetValues(typeof(StructureType)))
+        {
+            <option value="@(structureType)"
+                    selected="@(structureType == SelectedStructureType)"
+                    disabled="@(IsStructureTypeDisabled(structureType))">
+                @(DropdownLabels.GetLabelFor(structureType))
+            </option>
+        }
+    </select>
+
+    <select id="erAccountTypes"
+            class="form-control standard-dropdown"
+            @onchange="(e) => OnSelectERAccountType(e.Value.ToString())">
+        @foreach (ERAccountType erAccountType in Enum.GetValues(typeof(ERAccountType)))
+        {
+            <option value="@(erAccountType)"
+                    selected="@(erAccountType == SelectedERAccountType)"
+                    disabled="@(IsERAccountTypeDisabled(erAccountType))">
+                @(DropdownLabels.GetLabelFor(erAccountType))
+            </option>
+        }
+    </select>
+
+    <select id="levels"
+            class="form-control standard-dropdown"
+            @onchange="OnSelectLevel">
+        <option value="-1"
+                disabled>
+            Level
+        </option>
+        @foreach (var level in LevelsAvailable)
+        {
+            <option value="@level"
+                    selected="@(level == SelectedLevel)">
+                @level
+            </option>
+        }
+    </select>
+
+    <select id="accountRanges"
+            class="form-control standard-dropdown"
+            @onchange="(e) => OnSelectAccountRange(e.Value.ToString())">
+        @foreach (AccountRange accRange in Enum.GetValues(typeof(AccountRange)))
+        {
+            <option value="@(accRange)"
+                    selected="@(accRange == SelectedAccountRange)"
+                    disabled="@(accRange == AccountRange.None)">
+                @(DropdownLabels.GetLabelFor(accRange))
+            </option>
+        }
+    </select>
+
+    <hr />
+}
+
+@if (IsLoading == false && ERDataForMultipleYears != null)
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>
+                    Id / Konto-Name
+                </th>
+                @foreach (int y in ERDataForMultipleYears.SelectedYears)
+                {
+                    if (y < DataSvc.CURRENT_YEAR)
+                    {
+                        <th class="acc-th account-cell-actual">
+                            Rg Jahr @y
+                        </th>
+                    }
+                    else
+                    {
+                        <th class="acc-th account-cell-budget">
+                            Budget @y
+                        </th>
+                    }
+                }
+            </tr>
+        </thead>
+        <tbody>
+
+            @foreach (AccountMultipleYearsViewModel acc in ERDataForMultipleYears.AccountsWithMultipleYears)
+            {
+                <CascadingValue Value="@SelectedStructureType" Name="SelectedStructureType">
+                    <CascadingValue Value="@SelectedERAccountType" Name="SelectedERAccountType">
+                        <CascadingValue Value="@SelectedAccountRange" Name="SelectedAccountRange">
+                            <AccountTimeline AccountMultipleYears="acc"
+                                             LevelInGui="1" />
+                        </CascadingValue>
+                    </CascadingValue>
+                </CascadingValue>
+            }
+            <tr>
+                <th>
+                    @(SelectedERAccountType == ERAccountType.Balances ? "Gesamt-Differenz" : "Total")
+                </th>
+
+                @foreach (AccountYearTotalsViewModel m in ERDataForMultipleYears.ListOfAccountYearTotals)
+                {
+                    <th class="account-cell-@(m.Year < DataSvc.CURRENT_YEAR ? "actual" : "budget")">
+                        @(Helpers.FormatDecimal(GetTotalValue(m)))
+                    </th>
+                }
+            </tr>
+        </tbody>
+    </table>
+}
+
+@code {
+
+    bool IsLoading = false;
+
+    List<int> SelectedYears { get; set; }
+    List<int> LevelsAvailable { get; set; }
+
+    StructureType SelectedStructureType = StructureType.None;
+    ERAccountType SelectedERAccountType = ERAccountType.None;
+    AccountRange SelectedAccountRange = AccountRange.None;
+    int SelectedLevel = -1;
+
+    MultipleYearsViewModel ERDataForMultipleYears { get; set; }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        IsLoading = true;
+        LevelsAvailable = DataSvc.GetAvailableLevels();
+        SelectedYears = DataSvc.GetRelevantYears(DataSvc.CURRENT_YEAR);
+        IsLoading = false;
+    }
+
+    bool IsStructureTypeDisabled(StructureType t)
+    { 
+            return t == StructureType.None ||
+                  (t == StructureType.Subjects && SelectedERAccountType == ERAccountType.Balances);
+    }
+
+    bool IsERAccountTypeDisabled(ERAccountType t)
+    {
+        return t == ERAccountType.None ||
+              (t == ERAccountType.Balances && SelectedStructureType == StructureType.Subjects);
+    }
+
+
+    decimal? GetTotalValue(AccountYearTotalsViewModel m)
+    {
+        if (SelectedERAccountType == ERAccountType.Expenses)
+        {
+            return m.Year < DataSvc.CURRENT_YEAR ? m.ExpensesActualTotal : m.ExpensesBudgetTotal;
+        }
+        if (SelectedERAccountType == ERAccountType.Income)
+        {
+            return m.Year < DataSvc.CURRENT_YEAR ? m.IncomeActualTotal : m.IncomeBudgetTotal;
+        }
+        if (SelectedERAccountType == ERAccountType.Balances)
+        {
+            return m.Year < DataSvc.CURRENT_YEAR ? m.BalanceActualTotal : m.BalanceBudgetTotal;
+        }
+        return null;
+    }
+
+
+    async void OnSelectStructureType(string selectedType)
+    {
+        Enum.TryParse(selectedType, out StructureType structureType);
+
+        await jsRuntime.InvokeAsync<string>("console.error", structureType);
+        if (structureType != SelectedStructureType)
+        {
+            SelectedStructureType = structureType;
+            ReloadAccounts(SelectedStructureType, SelectedYears, SelectedERAccountType, SelectedLevel, SelectedAccountRange);
+            StateHasChanged(); // Triggers updating of Dropdown with ER-Account-Types
+        }
+    }
+
+
+    async void OnSelectERAccountType(string selectedItem)
+    {
+        Enum.TryParse(selectedItem, out ERAccountType erAccountType);
+
+        await jsRuntime.InvokeAsync<string>
+            ("console.error", erAccountType);
+        if (erAccountType != SelectedERAccountType)
+        {
+            SelectedERAccountType = erAccountType;
+
+            // In cases user selects "Balances", fetching new api-data is only needed if ERDataForMultipleYears == null
+            if (SelectedERAccountType != ERAccountType.Balances || ERDataForMultipleYears == null)
+            {
+                ReloadAccounts(SelectedStructureType, SelectedYears, SelectedERAccountType, SelectedLevel, SelectedAccountRange);
+            }
+            StateHasChanged();
+        }
+    }
+
+
+    async void OnSelectLevel(ChangeEventArgs e)
+    {
+        var newlySelectedLevel = int.Parse(e.Value.ToString());
+        await jsRuntime.InvokeAsync<string>
+            ("console.error", newlySelectedLevel);
+
+        if (newlySelectedLevel != SelectedLevel)
+        {
+            SelectedLevel = newlySelectedLevel;
+            ReloadAccounts(SelectedStructureType, SelectedYears, SelectedERAccountType, SelectedLevel, SelectedAccountRange);
+        }
+    }
+
+    async void OnSelectAccountRange(string selectedItem)
+    {
+        Enum.TryParse(selectedItem, out AccountRange accountRange);
+
+        await jsRuntime.InvokeAsync<string>
+            ("console.error", accountRange);
+        if (accountRange != SelectedAccountRange)
+        {
+            SelectedAccountRange = accountRange;
+            ReloadAccounts(SelectedStructureType, SelectedYears, SelectedERAccountType, SelectedLevel, SelectedAccountRange);
+        }
+    }
+
+    async void ReloadAccounts(StructureType structureType, List<int>
+        selectedYears, ERAccountType erAccountType, int level, AccountRange range)
+    {
+        await jsRuntime.InvokeAsync<string>
+            ("console.error", $"ER-Account-Type: {erAccountType}, Level: {level}, Range {range}");
+
+        if (structureType != StructureType.None && erAccountType != ERAccountType.None && level != -1 && range != AccountRange.None)
+        {
+            this.IsLoading = true;
+            StateHasChanged();
+            ERDataForMultipleYears = await DataSvc.FetchAccountGroupsForTimeline(structureType, erAccountType, selectedYears, SelectedLevel, range == AccountRange.AllAccounts);
+            this.IsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+}

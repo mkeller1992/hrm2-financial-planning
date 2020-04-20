@@ -1,0 +1,88 @@
+﻿@inject DataServiceER DataSvc
+@inject HelpersService Helpers
+
+    <tr class="account-row-@(LevelInGui)">
+        <td class="account-label-@(LevelInGui) text-level-@(LevelInGui)">
+            @(AccountYear.AccountId) &nbsp;
+
+            <a @onclick="OnAccountClicked" class="@(AccountYear.AccountLevel < 4 ? "account-link":"")">
+                @(AccountYear.AccountName)
+            </a>
+        </td>
+
+        @if (AccountYear.Year >= DataSvc.CURRENT_YEAR)
+        {
+            <td class="account-cell-budget text-level-@(LevelInGui)">
+                @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.ExpensesBudget))
+            </td>
+            <td class="account-cell-budget text-level-@(LevelInGui)">
+                @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.IncomeBudget))
+            </td>
+            @if (SelectedStructureType == StructureType.Functions)
+            {
+                <td class="account-cell-budget text-level-@(LevelInGui)">
+                    @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.BalanceBudget))
+                </td>
+            }
+        }
+        else if (AccountYear.Year < DataSvc.CURRENT_YEAR)
+        {
+            <td class="account-cell-actual text-level-@(LevelInGui)">
+                @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.ExpensesActual))
+            </td>
+            <td class="account-cell-actual text-level-@(LevelInGui)">
+                @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.IncomeActual))
+            </td>
+            @if (SelectedStructureType == StructureType.Functions)
+            {
+                <td class="account-cell-actual text-level-@(LevelInGui)">
+                    @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.BalanceActual))
+                </td>
+            }
+        }
+    </tr>
+
+@if (AreChildrenExpanded && AccountYear.ChildAccounts != null)
+{
+    foreach (var a in AccountYear.ChildAccounts)
+    {
+        <AccountStatic AccountYear="a"
+                       LevelInGui="(LevelInGui + 1)" />
+    }
+}
+
+
+@code {
+
+    [Parameter]
+    public int LevelInGui { get; set; }
+
+    [Parameter]
+    public AccountYearViewModel AccountYear { get; set; }
+
+    [CascadingParameter(Name = "SelectedStructureType")]
+    StructureType SelectedStructureType { get; set; }
+
+    [CascadingParameter(Name = "SelectedAccountRange")]
+    AccountRange SelectedAccountRange { get; set; }
+
+    public bool AreChildrenExpanded { get; set; }
+
+
+    async void OnAccountClicked()
+    {
+        if (AccountYear.AccountLevel == 4)
+        {
+            return;
+        }
+        AreChildrenExpanded = !AreChildrenExpanded;
+
+        if (AreChildrenExpanded && AccountYear.ChildAccounts == null)
+        {
+            AccountYear.ChildAccounts = await DataSvc.FetchSubGroupsOfERAccountStatic(AccountYear, SelectedStructureType, SelectedAccountRange == AccountRange.AllAccounts);
+        }
+        StateHasChanged();
+    }
+
+
+}
