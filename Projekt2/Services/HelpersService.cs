@@ -16,5 +16,9 @@ namespace Projekt2.Services
             return string.Format("{0:n0}", number);
         }
 
+        public bool IsPositive(decimal? number) {
+            return number == null || number >= 0;        
+        }
+
     }
 }

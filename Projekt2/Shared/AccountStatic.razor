@@ -18,9 +18,10 @@
             <td class="account-cell-budget text-level-@(LevelInGui)">
                 @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.IncomeBudget))
             </td>
-            @if (SelectedStructureType == StructureType.Functions)
+            @if (SelectedStructureType == StructureType.Functions.ToString())
             {
-                <td class="account-cell-budget text-level-@(LevelInGui)">
+                <td class="account-cell-budget text-level-@(LevelInGui)
+                          @(Helpers.IsPositive(AccountYear.BalanceBudget) ? "pos-value" : "neg-value")">
                     @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.BalanceBudget))
                 </td>
             }
@@ -33,9 +34,10 @@
             <td class="account-cell-actual text-level-@(LevelInGui)">
                 @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.IncomeActual))
             </td>
-            @if (SelectedStructureType == StructureType.Functions)
+            @if (SelectedStructureType == StructureType.Functions.ToString())
             {
-                <td class="account-cell-actual text-level-@(LevelInGui)">
+                <td class="account-cell-actual text-level-@(LevelInGui) 
+                           @(Helpers.IsPositive(AccountYear.BalanceActual) ? "pos-value" : "neg-value")">
                     @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.BalanceActual))
                 </td>
             }
@@ -61,10 +63,10 @@
     public AccountYearViewModel AccountYear { get; set; }
 
     [CascadingParameter(Name = "SelectedStructureType")]
-    StructureType SelectedStructureType { get; set; }
+    string SelectedStructureType { get; set; }
 
     [CascadingParameter(Name = "SelectedAccountRange")]
-    AccountRange SelectedAccountRange { get; set; }
+    string SelectedAccountRange { get; set; }
 
     public bool AreChildrenExpanded { get; set; }
 
@@ -77,9 +79,14 @@
         }
         AreChildrenExpanded = !AreChildrenExpanded;
 
-        if (AreChildrenExpanded && AccountYear.ChildAccounts == null)
+        if (AreChildrenExpanded &&
+            AccountYear.ChildAccounts == null &&
+            Enum.TryParse(SelectedStructureType, out StructureType structureType) &&
+            Enum.TryParse(SelectedAccountRange, out AccountRange selectRange))
         {
-            AccountYear.ChildAccounts = await DataSvc.FetchSubGroupsOfERAccountStatic(AccountYear, SelectedStructureType, SelectedAccountRange == AccountRange.AllAccounts);
+            AccountYear.ChildAccounts = await DataSvc.FetchSubGroupsOfERAccountStatic(AccountYear,
+                                                                                      structureType,
+                                                                                      selectRange == AccountRange.AllAccounts);
         }
         StateHasChanged();
     }

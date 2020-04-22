@@ -8,7 +8,7 @@ namespace Projekt2.ViewModels
     public class YearViewModel
     {
         public int Year { get; set; }
-        public AccountYearTotalsViewModel AccountYearTotals { get; set; }
+        public YearTotalsViewModel AccountYearTotals { get; set; }
         public List<AccountYearViewModel> Accounts { get; set; }
     }
 }

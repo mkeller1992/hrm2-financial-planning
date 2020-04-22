@@ -1,6 +1,7 @@
 ﻿@inject DataServiceER DataSvc
 @inject HelpersService Helpers
 
+
 <tr class="account-row-@(LevelInGui)">
     <td class="account-label-@(LevelInGui) text-level-@(LevelInGui)">
         @(AccountMultipleYears.AccountId) &nbsp;
@@ -12,10 +13,10 @@
 
     @foreach (AccountYearViewModel m in AccountMultipleYears.YearlyAccounts)
     {
-        <td class="account-cell-@(m.Year < DataSvc.CURRENT_YEAR ? "actual":"budget") text-level-@(LevelInGui)">
+        <td class="@(GetAccCellClassValues(m, GetAccountValue(SelectedERAccountType, m)))">
             @if (AreChildrenExpanded == false)
             {
-                @(Helpers.FormatDecimal(GetAccountValue(m)))
+                @(Helpers.FormatDecimal(GetAccountValue(SelectedERAccountType, m)))
             }
         </td>
     }
@@ -40,32 +41,41 @@
     public AccountMultipleYearsViewModel AccountMultipleYears { get; set; }
 
     [CascadingParameter(Name = "SelectedStructureType")]
-    StructureType SelectedStructureType { get; set; }
+    string SelectedStructureType { get; set; }
 
     [CascadingParameter(Name = "SelectedERAccountType")]
-    ERAccountType SelectedERAccountType { get; set; }
+    string SelectedERAccountType { get; set; }
 
     [CascadingParameter(Name = "SelectedAccountRange")]
-    AccountRange SelectedAccountRange { get; set; }
+    string SelectedAccountRange { get; set; }
 
     public bool AreChildrenExpanded { get; set; }
 
 
-    decimal? GetAccountValue(AccountYearViewModel m)
+    decimal? GetAccountValue(string type, AccountYearViewModel m)
     {
-        if (SelectedERAccountType == ERAccountType.Expenses)
+        if (Enum.TryParse(type, out ERAccountType accType))
         {
-            return m.Year < DataSvc.CURRENT_YEAR ? m.ExpensesActual : m.ExpensesBudget;
-        }
-        if (SelectedERAccountType == ERAccountType.Income)
-        {
-            return m.Year < DataSvc.CURRENT_YEAR ? m.IncomeActual : m.IncomeBudget;
-        }
-        if (SelectedERAccountType == ERAccountType.Balances)
-        {
-            return m.Year < DataSvc.CURRENT_YEAR ? m.BalanceActual : m.BalanceBudget;
+            return accType switch
+            {
+                ERAccountType.Expenses => m.Year < DataSvc.CURRENT_YEAR ? m.ExpensesActual : m.ExpensesBudget,
+                ERAccountType.Income => m.Year < DataSvc.CURRENT_YEAR ? m.IncomeActual : m.IncomeBudget,
+                ERAccountType.Balances => m.Year < DataSvc.CURRENT_YEAR ? m.BalanceActual : m.BalanceBudget,
+                _ => null
+            };
         }
         return null;
+    }
+
+    string GetAccCellClassValues(AccountYearViewModel m, decimal? value)
+    {
+        string result = $"account-cell-{(m.Year < DataSvc.CURRENT_YEAR ? "actual" : "budget")}";
+        result += $" text-level-{LevelInGui}";
+        if (SelectedERAccountType == ERAccountType.Balances.ToString())
+        {
+            result += $" {(Helpers.IsPositive(value) ? "pos-value" : "neg-value")}";
+        }
+        return result;
     }
 
     async void OnAccountClicked()
@@ -76,9 +86,13 @@
         }
         AreChildrenExpanded = !AreChildrenExpanded;
 
-        if (AreChildrenExpanded && AccountMultipleYears.Children == null)
+        if (AreChildrenExpanded &&
+            AccountMultipleYears.Children == null &&
+            Enum.TryParse(SelectedStructureType, out StructureType selectStructureT) &&
+            Enum.TryParse(SelectedERAccountType, out ERAccountType selectErAccT) &&
+            Enum.TryParse(SelectedAccountRange, out AccountRange selectRange))
         {
-            AccountMultipleYears.Children = await DataSvc.FetchSubGroupsOfERAccountTimeline(AccountMultipleYears, SelectedStructureType, SelectedERAccountType, SelectedAccountRange == AccountRange.AllAccounts);
+            AccountMultipleYears.Children = await DataSvc.FetchSubGroupsOfERAccountTimeline(AccountMultipleYears, selectStructureT, selectErAccT, selectRange == AccountRange.AllAccounts);
         }
         StateHasChanged();
     }

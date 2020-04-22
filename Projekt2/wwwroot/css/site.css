@@ -5,7 +5,12 @@ html, body {
 }
 
 body {
+    color: rgba(0,0,0,.7);
     overflow-y: scroll;
+}
+
+.table {
+    color: rgba(0,0,0,.7) !important;
 }
 
 a, .btn-link {
@@ -189,21 +194,35 @@ app {
 
 /** Own CSS Styles **/
 
+.dp-form-group {
+    display: inline-block;
+    background-color: rgba(0, 0, 255, 0.1);
+    padding: 5px;
+    margin-right: 10px;
+    border-radius: 8px;
+}
+
+.dp-label {
+    margin: unset;
+}
+
+.dp-label-text {
+    margin-right: 3px;
+}
+
 .standard-dropdown {
     width: unset;
     max-width: 300px;
     display: inline-block;
-    margin-right: 10px;
 }
 
 .account-link {
     color: blue !important;
-    text-decoration: underline !important;
     cursor: pointer;
 }
 
     .account-link:hover {
-        color: red !important;
+        text-decoration: underline !important;
     }
 
 .account-table-static {
@@ -215,11 +234,19 @@ app {
     font-size: 0.9rem;
 }
 
+.pos-value {
+    color: green;
+}
+
+.neg-value {
+    color: red;
+}
+
 .account-cell-actual {
 }
 
 .account-cell-budget {
-    color: blueviolet;
+    background-color: rgba(0, 0, 255, 0.04);
 }
 
 .text-level-1 {

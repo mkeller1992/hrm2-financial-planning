@@ -1,0 +1,61 @@
+﻿
+
+    <div class="dp-form-group">
+        <label class="dp-label">
+            <span class="dp-label-text">
+                @Label
+            </span>
+            <select id="accountRanges"
+                    class="form-control standard-dropdown"
+                    @onchange="(e) => OnSelectionChanged(e.Value.ToString())">
+                @foreach (KeyValuePair<string, string> item in Items)
+                {
+                    <option value="@(item.Key)"
+                            selected="@(item.Key == SelectedValue)"
+                            disabled="@(IsDisabled(item.Key))">
+                        @(item.Value)
+                    </option>
+                }
+            </select>
+        </label>
+    </div>
+
+
+
+@code {
+
+    [Parameter]
+    public string Label { get; set; }
+
+    [Parameter]
+    public string SelectedValue { get; set; }
+
+    [Parameter]
+    public List<string> DisabledKeys { get; set; }
+
+    [Parameter]
+    public Dictionary<string, string> Items { get; set; } = new Dictionary<string, string>();
+
+
+    [Parameter]
+    public EventCallback<string> SelectionChanged { get; set; }
+
+
+    void OnSelectionChanged(string newlySelectedVal)
+    {
+        if (newlySelectedVal != SelectedValue)
+        {
+            SelectedValue = newlySelectedVal;
+            this.SelectionChanged.InvokeAsync(newlySelectedVal);
+        }
+    }
+
+    bool IsDisabled(string key)
+    {
+        if (DisabledKeys != null) {
+            return DisabledKeys.Contains(key);
+        }
+        return false;
+    }
+
+}

@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Projekt2.ViewModels
 {
-    public class AccountYearTotalsViewModel
+    public class YearTotalsViewModel
     {
         public int Year { get; set; }
         public decimal? ExpensesActualTotal { get; set; }

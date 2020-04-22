@@ -5,8 +5,8 @@ using System.Threading.Tasks;
 
 namespace Projekt2.Services.Enums
 {
-    public enum StructureType
+    public enum AccountRange
     {
-        None, Functions, Subjects
+        UsedAccounts, AllAccounts
     }
 }

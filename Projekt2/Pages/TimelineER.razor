@@ -1,6 +1,7 @@
 ﻿@page "/timeline-er"
 @inject DataServiceER DataSvc
 @inject HelpersService Helpers
+@inject DropdownService DropdownSvc
 @inject IJSRuntime jsRuntime
 
 
@@ -10,62 +11,29 @@
     <p>Page is loading...</p>
 }
 
-@if (IsLoading == false && LevelsAvailable != null)
+@if (IsLoading == false)
 {
-    <select id="structureTypes"
-            class="form-control standard-dropdown"
-            @onchange="(e) => OnSelectStructureType(e.Value.ToString())">
-        @foreach (StructureType structureType in Enum.GetValues(typeof(StructureType)))
-        {
-            <option value="@(structureType)"
-                    selected="@(structureType == SelectedStructureType)"
-                    disabled="@(IsStructureTypeDisabled(structureType))">
-                @(DropdownLabels.GetLabelFor(structureType))
-            </option>
-        }
-    </select>
+    <DropdownStr Label="Gliederungsart"
+                 SelectedValue="@SelectedStructureType"
+                 Items="DropdownSvc.StructureTypes"
+                 DisabledKeys="DisabledStructures"
+                 SelectionChanged="OnSelectStructureType" />
 
-    <select id="erAccountTypes"
-            class="form-control standard-dropdown"
-            @onchange="(e) => OnSelectERAccountType(e.Value.ToString())">
-        @foreach (ERAccountType erAccountType in Enum.GetValues(typeof(ERAccountType)))
-        {
-            <option value="@(erAccountType)"
-                    selected="@(erAccountType == SelectedERAccountType)"
-                    disabled="@(IsERAccountTypeDisabled(erAccountType))">
-                @(DropdownLabels.GetLabelFor(erAccountType))
-            </option>
-        }
-    </select>
+    <DropdownStr Label="Werte-Art"
+                 SelectedValue="@SelectedERAccountType"
+                 Items="DropdownSvc.ERAccountTypes"
+                 DisabledKeys="DisabledERAccountTypes"
+                 SelectionChanged="OnSelectERAccountType" />
 
-    <select id="levels"
-            class="form-control standard-dropdown"
-            @onchange="OnSelectLevel">
-        <option value="-1"
-                disabled>
-            Level
-        </option>
-        @foreach (var level in LevelsAvailable)
-        {
-            <option value="@level"
-                    selected="@(level == SelectedLevel)">
-                @level
-            </option>
-        }
-    </select>
+    <DropdownInt Label="Level"
+                 SelectedValue="@SelectedLevel"
+                 Items="DropdownSvc.Levels"
+                 SelectionChanged="OnSelectLevel" />
 
-    <select id="accountRanges"
-            class="form-control standard-dropdown"
-            @onchange="(e) => OnSelectAccountRange(e.Value.ToString())">
-        @foreach (AccountRange accRange in Enum.GetValues(typeof(AccountRange)))
-        {
-            <option value="@(accRange)"
-                    selected="@(accRange == SelectedAccountRange)"
-                    disabled="@(accRange == AccountRange.None)">
-                @(DropdownLabels.GetLabelFor(accRange))
-            </option>
-        }
-    </select>
+    <DropdownStr Label="Umfang"
+                 SelectedValue="@SelectedAccountRange"
+                 Items="DropdownSvc.AccountRanges"
+                 SelectionChanged="OnSelectAccountRange" />
 
     <hr />
 }
@@ -75,23 +43,14 @@
     <table class="table">
         <thead>
             <tr>
-                <th>
+                <th class="acc-th">
                     Id / Konto-Name
                 </th>
                 @foreach (int y in ERDataForMultipleYears.SelectedYears)
                 {
-                    if (y < DataSvc.CURRENT_YEAR)
-                    {
-                        <th class="acc-th account-cell-actual">
-                            Rg Jahr @y
-                        </th>
-                    }
-                    else
-                    {
-                        <th class="acc-th account-cell-budget">
-                            Budget @y
-                        </th>
-                    }
+                    <th class="acc-th account-cell-@(y < DataSvc.CURRENT_YEAR ? "actual": "budget")">
+                        @(y < DataSvc.CURRENT_YEAR ? "Rg Jahr" :"Budget" ) @y
+                    </th>
                 }
             </tr>
         </thead>
@@ -110,13 +69,13 @@
             }
             <tr>
                 <th>
-                    @(SelectedERAccountType == ERAccountType.Balances ? "Gesamt-Differenz" : "Total")
+                    @(SelectedERAccountType == ERAccountType.Balances.ToString() ? "Gesamt-Differenz" : "Total")
                 </th>
 
-                @foreach (AccountYearTotalsViewModel m in ERDataForMultipleYears.ListOfAccountYearTotals)
+                @foreach (YearTotalsViewModel m in ERDataForMultipleYears.ListOfAccountYearTotals)
                 {
-                    <th class="account-cell-@(m.Year < DataSvc.CURRENT_YEAR ? "actual" : "budget")">
-                        @(Helpers.FormatDecimal(GetTotalValue(m)))
+                    <th class="@(GetTotalCellClassValues(m, GetTotalValue(SelectedERAccountType, m)))">
+                        @(Helpers.FormatDecimal(GetTotalValue(SelectedERAccountType, m)))
                     </th>
                 }
             </tr>
@@ -126,84 +85,84 @@
 
 @code {
 
-    bool IsLoading = false;
+    bool IsLoading = true;
 
     List<int> SelectedYears { get; set; }
-    List<int> LevelsAvailable { get; set; }
 
-    StructureType SelectedStructureType = StructureType.None;
-    ERAccountType SelectedERAccountType = ERAccountType.None;
-    AccountRange SelectedAccountRange = AccountRange.None;
-    int SelectedLevel = -1;
+    string SelectedStructureType = StructureType.Functions.ToString();
+    string SelectedERAccountType = ERAccountType.Expenses.ToString();
+    string SelectedAccountRange = AccountRange.UsedAccounts.ToString();
+    int SelectedLevel;
+
+    List<string> DisabledStructures = new List<string>();
+    List<string> DisabledERAccountTypes = new List<string>();
 
     MultipleYearsViewModel ERDataForMultipleYears { get; set; }
 
 
     protected override async Task OnInitializedAsync()
     {
-        IsLoading = true;
-        LevelsAvailable = DataSvc.GetAvailableLevels();
-        SelectedYears = DataSvc.GetRelevantYears(DataSvc.CURRENT_YEAR);
+        this.SelectedLevel = 1;
+        SetDisabledStructureTypes(SelectedERAccountType);
+        SetDisabledERAccountTypes(SelectedStructureType);
+
+        this.SelectedYears = DataSvc.GetRelevantYears(DataSvc.CURRENT_YEAR);
+        ReloadAccounts(SelectedStructureType, SelectedYears, SelectedERAccountType, SelectedLevel, SelectedAccountRange);
         IsLoading = false;
     }
 
-    bool IsStructureTypeDisabled(StructureType t)
-    { 
-            return t == StructureType.None ||
-                  (t == StructureType.Subjects && SelectedERAccountType == ERAccountType.Balances);
+
+    string GetTotalCellClassValues(YearTotalsViewModel m, decimal? value)
+    {
+        string result = $"account-cell-{(m.Year < DataSvc.CURRENT_YEAR ? "actual" : "budget")}";
+
+        if (SelectedERAccountType == ERAccountType.Balances.ToString())
+        {
+            result += Helpers.IsPositive(value) ? " pos-value" : " neg-value";
+        }
+        return result;
     }
 
-    bool IsERAccountTypeDisabled(ERAccountType t)
-    {
-        return t == ERAccountType.None ||
-              (t == ERAccountType.Balances && SelectedStructureType == StructureType.Subjects);
-    }
 
-
-    decimal? GetTotalValue(AccountYearTotalsViewModel m)
+    decimal? GetTotalValue(string type, YearTotalsViewModel m)
     {
-        if (SelectedERAccountType == ERAccountType.Expenses)
+        if (Enum.TryParse(type, out ERAccountType eRAccountType))
         {
-            return m.Year < DataSvc.CURRENT_YEAR ? m.ExpensesActualTotal : m.ExpensesBudgetTotal;
-        }
-        if (SelectedERAccountType == ERAccountType.Income)
-        {
-            return m.Year < DataSvc.CURRENT_YEAR ? m.IncomeActualTotal : m.IncomeBudgetTotal;
-        }
-        if (SelectedERAccountType == ERAccountType.Balances)
-        {
-            return m.Year < DataSvc.CURRENT_YEAR ? m.BalanceActualTotal : m.BalanceBudgetTotal;
+            return eRAccountType switch
+            {
+                ERAccountType.Expenses => m.Year < DataSvc.CURRENT_YEAR ? m.ExpensesActualTotal : m.ExpensesBudgetTotal,
+                ERAccountType.Income => m.Year < DataSvc.CURRENT_YEAR ? m.IncomeActualTotal : m.IncomeBudgetTotal,
+                ERAccountType.Balances => m.Year < DataSvc.CURRENT_YEAR ? m.BalanceActualTotal : m.BalanceBudgetTotal,
+                _ => null
+            };
         }
         return null;
     }
 
 
-    async void OnSelectStructureType(string selectedType)
+    async void OnSelectStructureType(string inputVal)
     {
-        Enum.TryParse(selectedType, out StructureType structureType);
-
-        await jsRuntime.InvokeAsync<string>("console.error", structureType);
-        if (structureType != SelectedStructureType)
+        await jsRuntime.InvokeAsync<string>("console.error", inputVal);
+        if (inputVal != SelectedStructureType)
         {
-            SelectedStructureType = structureType;
+            SetDisabledERAccountTypes(inputVal);
+            SelectedStructureType = inputVal;
             ReloadAccounts(SelectedStructureType, SelectedYears, SelectedERAccountType, SelectedLevel, SelectedAccountRange);
             StateHasChanged(); // Triggers updating of Dropdown with ER-Account-Types
         }
     }
 
 
-    async void OnSelectERAccountType(string selectedItem)
+    async void OnSelectERAccountType(string inputVal)
     {
-        Enum.TryParse(selectedItem, out ERAccountType erAccountType);
-
-        await jsRuntime.InvokeAsync<string>
-            ("console.error", erAccountType);
-        if (erAccountType != SelectedERAccountType)
+        await jsRuntime.InvokeAsync<string>("console.error", inputVal);
+        if (inputVal != SelectedERAccountType)
         {
-            SelectedERAccountType = erAccountType;
+            SetDisabledStructureTypes(inputVal);
+            SelectedERAccountType = inputVal;
 
             // In cases user selects "Balances", fetching new api-data is only needed if ERDataForMultipleYears == null
-            if (SelectedERAccountType != ERAccountType.Balances || ERDataForMultipleYears == null)
+            if (SelectedERAccountType != ERAccountType.Balances.ToString() || ERDataForMultipleYears == null)
             {
                 ReloadAccounts(SelectedStructureType, SelectedYears, SelectedERAccountType, SelectedLevel, SelectedAccountRange);
             }
@@ -212,45 +171,73 @@
     }
 
 
-    async void OnSelectLevel(ChangeEventArgs e)
+    async void OnSelectLevel(int inputVal)
     {
-        var newlySelectedLevel = int.Parse(e.Value.ToString());
-        await jsRuntime.InvokeAsync<string>
-            ("console.error", newlySelectedLevel);
+        await jsRuntime.InvokeAsync<string>("console.error", inputVal);
 
-        if (newlySelectedLevel != SelectedLevel)
+        if (inputVal != SelectedLevel)
         {
-            SelectedLevel = newlySelectedLevel;
+            SelectedLevel = inputVal;
             ReloadAccounts(SelectedStructureType, SelectedYears, SelectedERAccountType, SelectedLevel, SelectedAccountRange);
         }
     }
 
-    async void OnSelectAccountRange(string selectedItem)
-    {
-        Enum.TryParse(selectedItem, out AccountRange accountRange);
 
-        await jsRuntime.InvokeAsync<string>
-            ("console.error", accountRange);
-        if (accountRange != SelectedAccountRange)
+    async void OnSelectAccountRange(string inputVal)
+    {
+        await jsRuntime.InvokeAsync<string>("console.error", inputVal);
+        if (inputVal != SelectedAccountRange)
         {
-            SelectedAccountRange = accountRange;
+            SelectedAccountRange = inputVal;
             ReloadAccounts(SelectedStructureType, SelectedYears, SelectedERAccountType, SelectedLevel, SelectedAccountRange);
         }
     }
 
-    async void ReloadAccounts(StructureType structureType, List<int>
-        selectedYears, ERAccountType erAccountType, int level, AccountRange range)
+
+    private async void ReloadAccounts(string structureT, List<int> selectedYears, string accType, int level, string accRange)
     {
         await jsRuntime.InvokeAsync<string>
-            ("console.error", $"ER-Account-Type: {erAccountType}, Level: {level}, Range {range}");
+            ("console.error", $"StructureType: {structureT} ER-Account-Type: {accType}, Level: {level}, Range {accRange}");
 
-        if (structureType != StructureType.None && erAccountType != ERAccountType.None && level != -1 && range != AccountRange.None)
+        if (level > 0 &&
+            Enum.TryParse(structureT, out StructureType structureType) &&
+            Enum.TryParse(accType, out ERAccountType erAccountType) &&
+            Enum.TryParse(accRange, out AccountRange range))
         {
             this.IsLoading = true;
             StateHasChanged();
-            ERDataForMultipleYears = await DataSvc.FetchAccountGroupsForTimeline(structureType, erAccountType, selectedYears, SelectedLevel, range == AccountRange.AllAccounts);
+            ERDataForMultipleYears = await DataSvc.FetchAccountGroupsForTimeline(structureType,
+                                                                                 erAccountType,
+                                                                                 selectedYears,
+                                                                                 SelectedLevel,
+                                                                                 range == AccountRange.AllAccounts);
             this.IsLoading = false;
             StateHasChanged();
+        }
+    }
+
+
+    private void SetDisabledStructureTypes(string selectedERAccountType)
+    {
+        if (selectedERAccountType == ERAccountType.Balances.ToString())
+        {
+            DisabledStructures.Add(StructureType.Subjects.ToString());
+        }
+        else
+        {
+            DisabledStructures.Clear();
+        }
+    }
+
+    private void SetDisabledERAccountTypes(string selectedStructureType)
+    {
+        if (selectedStructureType == StructureType.Subjects.ToString())
+        {
+            DisabledERAccountTypes.Add(ERAccountType.Balances.ToString());
+        }
+        else
+        {
+            DisabledERAccountTypes.Clear();
         }
     }
 

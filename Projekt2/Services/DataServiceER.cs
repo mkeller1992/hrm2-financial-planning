@@ -21,30 +21,25 @@ namespace Projekt2.Services
             _context = context;
         }
 
+
         public List<int> GetRelevantYears(int currentYear)
         {
             var result = new List<int>();
             int count = -2;
             while (count < 5)
             {
-                result.Add(currentYear + count);
+                result.Add((currentYear + count));
                 count++;
             }
             return result;
         }
 
-        public List<int> GetAvailableLevels()
-        {
-            return new List<int>() { 1, 2, 3, 4 };
-        }
-
-
         public async Task<YearViewModel> FetchERAccountGroupsForYear(StructureType selectedType, int selectedYear, int selectedLevel, bool allExistingAccounts)
         {
             var query = GetQueryToFetchAccountGroupsER(selectedType, new List<int> { selectedYear }, selectedLevel, allExistingAccounts);
-            var accounts = await query.ToListAsync();
+            List<AccountYearViewModel> accounts = await query.ToListAsync();
 
-            var m = new AccountYearTotalsViewModel
+            var m = new YearTotalsViewModel
             {
                 Year = selectedYear,
                 ExpensesActualTotal = accounts.Select(a => a.ExpensesActual).Sum(),
@@ -55,10 +50,16 @@ namespace Projekt2.Services
             m.BalanceActualTotal = (m.IncomeActualTotal ?? 0) - (m.ExpensesActualTotal ?? 0);
             m.BalanceBudgetTotal = (m.IncomeBudgetTotal ?? 0) - (m.ExpensesBudgetTotal ?? 0);
 
+            // AccountGroup-Items which had no partner in LEFT-JOIN result in Objects where year was not set:
+            foreach(var a in accounts) 
+            {
+                a.Year = selectedYear;
+            }
+
             return new YearViewModel
             {
                 Year = selectedYear,
-                Accounts = accounts.ToList(),
+                Accounts = accounts,
                 AccountYearTotals = m
             };
         }
@@ -102,11 +103,11 @@ namespace Projekt2.Services
                                      .ToList();
             }
 
-            List<AccountYearTotalsViewModel> totalsForSelectedYears = new List<AccountYearTotalsViewModel>();
+            List<YearTotalsViewModel> totalsForSelectedYears = new List<YearTotalsViewModel>();
 
             foreach (var year in selectedYears)
             {
-                var m = new AccountYearTotalsViewModel
+                var m = new YearTotalsViewModel
                 {
                     Year = year,
                     ExpensesActualTotal = accounts.Where(a => a.Year == year).Select(a => a.ExpensesActual).Sum(),
@@ -138,8 +139,15 @@ namespace Projekt2.Services
                         var ya = accounts.Where(a => a.AccountId == id).ToList();
                         if (ya.Count == 1)
                         {
-                            ya[0].Year = year;
-                            yearlyAccounts.Add(ya[0]);
+                            yearlyAccounts.Add(new AccountYearViewModel
+                            {
+                                Year = year,
+                                AccountId = ya[0].AccountId,
+                                AccountName = ya[0].AccountName,
+                                AccountLevel = ya[0].AccountLevel,
+                                ParentId = ya[0].ParentId,
+                                Type = ya[0].Type
+                            });
                         }
                     }
                     else if (yearlyAccount.Count == 1)
