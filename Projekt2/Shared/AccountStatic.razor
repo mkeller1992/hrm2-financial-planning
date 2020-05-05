@@ -1,55 +1,71 @@
 ﻿@inject DataServiceER DataSvc
 @inject HelpersService Helpers
 
-    <tr class="account-row-@(LevelInGui)">
-        <td class="account-label-@(LevelInGui) text-level-@(LevelInGui)">
-            @(AccountYear.AccountId) &nbsp;
+<tr class="account-row-@(LevelInGui)">
+    <td class="account-label-@(LevelInGui) text-level-@(LevelInGui) first-col">
+        @(AccountYear.AccountId) &nbsp;
 
-            <a @onclick="OnAccountClicked" class="@(AccountYear.AccountLevel < 4 ? "account-link":"")">
-                @(AccountYear.AccountName)
-            </a>
+        <a @onclick="OnAccountClicked" class="@(AccountYear.AccountLevel < 4 ? "account-link":"")">
+            @(AccountYear.AccountName)
+        </a>
+    </td>
+
+    @if (AccountYear.Year >= DataSvc.CurrentYear)
+    {
+        <td class="account-cell-budget text-level-@(LevelInGui)">
+            @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.ExpensesBudget))
         </td>
-
-        @if (AccountYear.Year >= DataSvc.CURRENT_YEAR)
+        <td class="account-cell-budget text-level-@(LevelInGui) @(Helpers.GetColorIfNegativeFav(AccountYear.PercentageChangeExpensesBudget, 0))">
+            @(AreChildrenExpanded ? "" : Helpers.FormatPercentage(AccountYear.PercentageChangeExpensesBudget))
+        </td>
+        <td class="account-cell-budget text-level-@(LevelInGui)">
+            @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.IncomeBudget))
+        </td>
+        <td class="account-cell-budget text-level-@(LevelInGui) @(Helpers.GetColorIfPositiveFav(AccountYear.PercentageChangeIncomeBudget, 0))">
+            @(AreChildrenExpanded ? "" : Helpers.FormatPercentage(AccountYear.PercentageChangeIncomeBudget))
+        </td>
+        @if (SelectedStructureType == StructureType.Functions.ToString())
         {
             <td class="account-cell-budget text-level-@(LevelInGui)">
-                @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.ExpensesBudget))
+                @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.BalanceBudget))
             </td>
-            <td class="account-cell-budget text-level-@(LevelInGui)">
-                @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.IncomeBudget))
+            <td class="account-cell-budget text-level-@(LevelInGui) @(Helpers.GetColorIfPositiveFav(AccountYear.PercentageChangeBalanceBudget, 0))">
+                @(AreChildrenExpanded ? "" : Helpers.FormatPercentage(AccountYear.PercentageChangeBalanceBudget))
             </td>
-            @if (SelectedStructureType == StructureType.Functions.ToString())
-            {
-                <td class="account-cell-budget text-level-@(LevelInGui)
-                          @(Helpers.IsPositive(AccountYear.BalanceBudget) ? "pos-value" : "neg-value")">
-                    @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.BalanceBudget))
-                </td>
-            }
         }
-        else if (AccountYear.Year < DataSvc.CURRENT_YEAR)
+    }
+    else if (AccountYear.Year < DataSvc.CurrentYear)
+    {
+        <td class="account-cell-actual text-level-@(LevelInGui)">
+            @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.ExpensesActual))
+        </td>
+        <td class="account-cell-actual text-level-@(LevelInGui) @(Helpers.GetColorIfNegativeFav(AccountYear.PercentageChangeExpensesActual, 0))">
+            @(AreChildrenExpanded ? "" : Helpers.FormatPercentage(AccountYear.PercentageChangeExpensesActual))
+        </td>
+        <td class="account-cell-actual text-level-@(LevelInGui)">
+            @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.IncomeActual))
+        </td>
+        <td class="account-cell-actual text-level-@(LevelInGui) @(Helpers.GetColorIfPositiveFav(AccountYear.PercentageChangeIncomeActual, 0))">
+            @(AreChildrenExpanded ? "" : Helpers.FormatPercentage(AccountYear.PercentageChangeIncomeActual))
+        </td>
+        @if (SelectedStructureType == StructureType.Functions.ToString())
         {
             <td class="account-cell-actual text-level-@(LevelInGui)">
-                @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.ExpensesActual))
+                @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.BalanceActual))
             </td>
-            <td class="account-cell-actual text-level-@(LevelInGui)">
-                @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.IncomeActual))
+            <td class="account-cell-actual text-level-@(LevelInGui) @(Helpers.GetColorIfPositiveFav(AccountYear.PercentageChangeBalanceActual, 0))">
+                @(AreChildrenExpanded ? "" : Helpers.FormatPercentage(AccountYear.PercentageChangeBalanceActual))
             </td>
-            @if (SelectedStructureType == StructureType.Functions.ToString())
-            {
-                <td class="account-cell-actual text-level-@(LevelInGui) 
-                           @(Helpers.IsPositive(AccountYear.BalanceActual) ? "pos-value" : "neg-value")">
-                    @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.BalanceActual))
-                </td>
-            }
         }
-    </tr>
+    }
+</tr>
 
 @if (AreChildrenExpanded && AccountYear.ChildAccounts != null)
 {
     foreach (var a in AccountYear.ChildAccounts)
     {
-        <AccountStatic AccountYear="a"
-                       LevelInGui="(LevelInGui + 1)" />
+    <AccountStatic AccountYear="a"
+                   LevelInGui="(LevelInGui + 1)" />
     }
 }
 
@@ -84,7 +100,7 @@
             Enum.TryParse(SelectedStructureType, out StructureType structureType) &&
             Enum.TryParse(SelectedAccountRange, out AccountRange selectRange))
         {
-            AccountYear.ChildAccounts = await DataSvc.FetchSubGroupsOfERAccountStatic(AccountYear,
+            AccountYear.ChildAccounts = await DataSvc.FetchSubGroupsForYearlyEr(AccountYear,
                                                                                       structureType,
                                                                                       selectRange == AccountRange.AllAccounts);
         }

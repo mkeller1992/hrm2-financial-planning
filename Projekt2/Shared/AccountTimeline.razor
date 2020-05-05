@@ -3,7 +3,7 @@
 
 
 <tr class="account-row-@(LevelInGui)">
-    <td class="account-label-@(LevelInGui) text-level-@(LevelInGui)">
+    <td class="account-label-@(LevelInGui) text-level-@(LevelInGui) first-col">
         @(AccountMultipleYears.AccountId) &nbsp;
 
         <a @onclick="OnAccountClicked" class="@(AccountMultipleYears.AccountLevel < 4 ? "account-link":"")">
@@ -16,7 +16,26 @@
         <td class="@(GetAccCellClassValues(m, GetAccountValue(SelectedERAccountType, m)))">
             @if (AreChildrenExpanded == false)
             {
-                @(Helpers.FormatDecimal(GetAccountValue(SelectedERAccountType, m)))
+                decimal? roundedVal = Helpers.GetRoundedValue(GetAccountValue(SelectedERAccountType, m));
+                decimal? percentChange = GetAccountChange(SelectedERAccountType, m);
+                string color = GetColor(SelectedERAccountType, m);
+
+                @roundedVal
+
+                <span class="@color">
+                    @if (percentChange == 0)
+                    {
+                        <i class="fas fa-arrow-up fa-rotate-90"></i>
+                    }
+                    else if (percentChange > 0)
+                    {
+                        <i class="fas fa-arrow-up fa-rotate-45"></i>
+                    }
+                    else if (percentChange < 0)
+                    {
+                        <i class="fas fa-arrow-up fa-rotate-135"></i>
+                    }
+                </span>
             }
         </td>
     }
@@ -58,18 +77,54 @@
         {
             return accType switch
             {
-                ERAccountType.Expenses => m.Year < DataSvc.CURRENT_YEAR ? m.ExpensesActual : m.ExpensesBudget,
-                ERAccountType.Income => m.Year < DataSvc.CURRENT_YEAR ? m.IncomeActual : m.IncomeBudget,
-                ERAccountType.Balances => m.Year < DataSvc.CURRENT_YEAR ? m.BalanceActual : m.BalanceBudget,
+                ERAccountType.Expenses => m.Year < DataSvc.CurrentYear ? m.ExpensesActual : m.ExpensesBudget,
+                ERAccountType.Income => m.Year < DataSvc.CurrentYear ? m.IncomeActual : m.IncomeBudget,
+                ERAccountType.Balances => m.Year < DataSvc.CurrentYear ? m.BalanceActual : m.BalanceBudget,
                 _ => null
             };
         }
         return null;
     }
 
+    decimal? GetAccountChange(string type, AccountYearViewModel m)
+    {
+        if (Enum.TryParse(type, out ERAccountType accType))
+        {
+            return accType switch
+            {
+                ERAccountType.Expenses => m.Year < DataSvc.CurrentYear ? m.PercentageChangeExpensesActual : m.PercentageChangeExpensesBudget,
+                ERAccountType.Income => m.Year < DataSvc.CurrentYear ? m.PercentageChangeIncomeActual : m.PercentageChangeIncomeBudget,
+                ERAccountType.Balances => m.Year < DataSvc.CurrentYear ? m.PercentageChangeBalanceActual : m.PercentageChangeBalanceBudget,
+                _ => null
+            };
+        }
+        return null;
+    }
+
+    string GetColor(string type, AccountYearViewModel m)
+    {
+        var h = Helpers;
+
+        if (Enum.TryParse(type, out ERAccountType accType))
+        {
+            return accType switch
+            {
+                ERAccountType.Expenses => m.Year < DataSvc.CurrentYear ? h.GetColorIfNegativeFav(m.PercentageChangeExpensesActual) : 
+                                                                         h.GetColorIfNegativeFav(m.PercentageChangeExpensesBudget),
+                ERAccountType.Income => m.Year < DataSvc.CurrentYear ? h.GetColorIfPositiveFav(m.PercentageChangeIncomeActual) : 
+                                                                       h.GetColorIfPositiveFav(m.PercentageChangeIncomeBudget),
+                ERAccountType.Balances => m.Year < DataSvc.CurrentYear ? h.GetColorIfPositiveFav(m.PercentageChangeBalanceActual) :
+                                                                         h.GetColorIfPositiveFav(m.PercentageChangeBalanceBudget),
+                _ => null
+                };
+        }
+        return null;
+    }
+
+
     string GetAccCellClassValues(AccountYearViewModel m, decimal? value)
     {
-        string result = $"account-cell-{(m.Year < DataSvc.CURRENT_YEAR ? "actual" : "budget")}";
+        string result = $"account-cell-{(m.Year < DataSvc.CurrentYear ? "actual" : "budget")}";
         result += $" text-level-{LevelInGui}";
         if (SelectedERAccountType == ERAccountType.Balances.ToString())
         {
@@ -92,7 +147,7 @@
             Enum.TryParse(SelectedERAccountType, out ERAccountType selectErAccT) &&
             Enum.TryParse(SelectedAccountRange, out AccountRange selectRange))
         {
-            AccountMultipleYears.Children = await DataSvc.FetchSubGroupsOfERAccountTimeline(AccountMultipleYears, selectStructureT, selectErAccT, selectRange == AccountRange.AllAccounts);
+            AccountMultipleYears.Children = await DataSvc.FetchSubGroupsForTimelineEr(AccountMultipleYears, selectStructureT, selectErAccT, selectRange == AccountRange.AllAccounts);
         }
         StateHasChanged();
     }

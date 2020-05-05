@@ -39,95 +39,139 @@
 
 @if (IsLoading == false && ERofYear != null && ERofYear.Accounts != null)
 {
-    <table class="table account-table-static">
-        <thead>
-            <tr>
-                <th class="acc-th">
-                    Id / Konto-Name
-                </th>
-                @if (SelectedYear >= DataSvc.CURRENT_YEAR)
-                {
-                    <th class="acc-th account-cell-budget">
-                        Budget. Aufwand
+    <div class="content-scroll-wrap">
+        <div class="content-scroll">
+            <table class="table account-table-static">
+                <thead>
+                <tr>
+                    <th class="acc-th first-col">
+                        Id / Konto-Name
                     </th>
-                    <th class="acc-th account-cell-budget">
-                        Budget. Ertrag
-                    </th>
-                    @if (SelectedStructureType == StructureType.Functions.ToString())
+                    @if (SelectedYear >= DataSvc.CurrentYear)
                     {
-                        <th class="acc-th account-cell-budget">
-                            Budget. Saldo
+                        <th class="acc-th">
+                            Budget. Aufwand
                         </th>
+                        <th class="acc-th">
+                            Diff.A.
+                        </th>
+                        <th class="acc-th">
+                            Budget. Ertrag
+                        </th>
+                        <th class="acc-th">
+                            Diff.B.
+                        </th>
+                        @if (SelectedStructureType == StructureType.Functions.ToString())
+                        {
+                            <th class="acc-th">
+                                Budget. Saldo
+                            </th>
+                            <th class="acc-th">
+                                Diff.S.
+                            </th>
+                        }
                     }
-                }
-                else if (SelectedYear < DataSvc.CURRENT_YEAR)
-                {
-                    <th class="acc-th account-cell-actual">
-                        Aufwand
-                    </th>
-                    <th class="acc-th account-cell-actual">
-                        Ertrag
-                    </th>
-                    @if (SelectedStructureType == StructureType.Functions.ToString())
+                    else if (SelectedYear < DataSvc.CurrentYear)
                     {
                         <th class="acc-th account-cell-actual">
-                            Saldo
+                            Aufwand
                         </th>
+                        <th class="acc-th account-cell-actual">
+                            Diff.A.
+                        </th>
+                        <th class="acc-th account-cell-actual">
+                            Ertrag
+                        </th>
+                        <th class="acc-th account-cell-actual">
+                            Diff.E.
+                        </th>
+                        @if (SelectedStructureType == StructureType.Functions.ToString())
+                        {
+                            <th class="acc-th account-cell-actual">
+                                Saldo
+                            </th>
+                            <th class="acc-th account-cell-actual">
+                                Diff.S.
+                            </th>
+                        }
                     }
-                }
-            </tr>
-        </thead>
-        <tbody>
+                </tr>
+                </thead>
+                <tbody>
 
-            @foreach (AccountYearViewModel acc in ERofYear.Accounts)
-            {
-                <CascadingValue Value="@SelectedStructureType" Name="SelectedStructureType">
-                    <CascadingValue Value="@SelectedAccountRange" Name="SelectedAccountRange">
-                        <AccountStatic AccountYear="acc"
-                                       LevelInGui="1" />
+                @foreach (AccountYearViewModel acc in ERofYear.Accounts)
+                {
+                    <CascadingValue Value="@SelectedStructureType" Name="SelectedStructureType">
+                        <CascadingValue Value="@SelectedAccountRange" Name="SelectedAccountRange">
+                            <AccountStatic AccountYear="acc"
+                                           LevelInGui="1"/>
+                        </CascadingValue>
                     </CascadingValue>
-                </CascadingValue>
-            }
-            <tr>
-                <th>
-                    Total
-                </th>
+                }
+                <tr>
+                    <th class="first-col">
+                        Total
+                    </th>
 
-                @if (SelectedYear >= DataSvc.CURRENT_YEAR)
-                {
-                    <th class="account-cell-budget">
-                        @(Helpers.FormatDecimal(ERofYear.AccountYearTotals.ExpensesBudgetTotal))
-                    </th>
-                    <th class="account-cell-budget">
-                        @(Helpers.FormatDecimal(ERofYear.AccountYearTotals.IncomeBudgetTotal))
-                    </th>
-                    @if (SelectedStructureType == StructureType.Functions.ToString())
+                    @if (SelectedYear >= DataSvc.CurrentYear)
                     {
-                        <th class="account-cell-budget
-                            @(Helpers.IsPositive(ERofYear.AccountYearTotals.BalanceBudgetTotal) ? "pos-value" : "neg-value")">
-                            @(Helpers.FormatDecimal(ERofYear.AccountYearTotals.BalanceBudgetTotal))
+                        <th class="total account-cell-budget">
+                            @(Helpers.FormatDecimal(ERofYear.AccountYearTotals.ExpensesBudgetTotal))
                         </th>
+                        <th class="total account-cell-budget
+                            @(Helpers.GetColorIfNegativeFav(ERofYear.AccountYearTotals.PercentageChangeExpensesBudgetTotal, 0))">
+                            @(Helpers.FormatPercentage(ERofYear.AccountYearTotals.PercentageChangeExpensesBudgetTotal))
+                        </th>
+                        <th class="total account-cell-budget">
+                            @(Helpers.FormatDecimal(ERofYear.AccountYearTotals.IncomeBudgetTotal))
+                        </th>
+                        <th class="total account-cell-budget
+                            @(Helpers.GetColorIfPositiveFav(ERofYear.AccountYearTotals.PercentageChangeIncomeBudgetTotal, 0))">
+                            @(Helpers.FormatPercentage(ERofYear.AccountYearTotals.PercentageChangeIncomeBudgetTotal))
+                        </th>
+                        @if (SelectedStructureType == StructureType.Functions.ToString())
+                        {
+                            <th class="total account-cell-budget">
+                                @(Helpers.FormatDecimal(ERofYear.AccountYearTotals.BalanceBudgetTotal))
+                            </th>
+                            <th class="total account-cell-budget
+                            @(Helpers.GetColorIfPositiveFav(ERofYear.AccountYearTotals.PercentageChangeBalanceBudgetTotal, 0))">
+                                @(Helpers.FormatPercentage(ERofYear.AccountYearTotals.PercentageChangeBalanceBudgetTotal))
+                            </th>
+                        }
                     }
-                }
-                else if (SelectedYear < DataSvc.CURRENT_YEAR)
-                {
-                    <th class="account-cell-actual">
-                        @(Helpers.FormatDecimal(ERofYear.AccountYearTotals.ExpensesActualTotal))
-                    </th>
-                    <th class="account-cell-actual">
-                        @(Helpers.FormatDecimal(ERofYear.AccountYearTotals.IncomeActualTotal))
-                    </th>
-                    @if (SelectedStructureType == StructureType.Functions.ToString())
+                    else if (SelectedYear < DataSvc.CurrentYear)
                     {
-                        <th class="account-cell-actual
-                            @(Helpers.IsPositive(ERofYear.AccountYearTotals.BalanceActualTotal) ? "pos-value" : "neg-value")">
-                            @(Helpers.FormatDecimal(ERofYear.AccountYearTotals.BalanceActualTotal))
+                        <th class="total account-cell-actual">
+                            @(Helpers.FormatDecimal(ERofYear.AccountYearTotals.ExpensesActualTotal))
                         </th>
+                        <th class="total account-cell-actual
+                            @(Helpers.GetColorIfNegativeFav(ERofYear.AccountYearTotals.PercentageChangeExpensesActualTotal, 0))">
+                            @(Helpers.FormatPercentage(ERofYear.AccountYearTotals.PercentageChangeExpensesActualTotal))
+                        </th>
+                        <th class="total account-cell-actual">
+                            @(Helpers.FormatDecimal(ERofYear.AccountYearTotals.IncomeActualTotal))
+                        </th>
+                        <th class="total account-cell-actual
+                            @(Helpers.GetColorIfPositiveFav(ERofYear.AccountYearTotals.PercentageChangeIncomeActualTotal, 0))">
+                            @(Helpers.FormatPercentage(ERofYear.AccountYearTotals.PercentageChangeIncomeActualTotal))
+                        </th>
+                        @if (SelectedStructureType == StructureType.Functions.ToString())
+                        {
+                            <th class="total account-cell-actual">
+                                @(Helpers.FormatDecimal(ERofYear.AccountYearTotals.BalanceActualTotal))
+                            </th>
+                            <th class="total account-cell-actual
+                            @(Helpers.GetColorIfPositiveFav(ERofYear.AccountYearTotals.PercentageChangeBalanceActualTotal, 0))">
+                                @(Helpers.FormatPercentage(ERofYear.AccountYearTotals.PercentageChangeBalanceActualTotal))
+                            </th>
+                        }
                     }
-                }
-            </tr>
-        </tbody>
-    </table>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
 }
 
 
@@ -147,9 +191,9 @@
 
     protected override async Task OnInitializedAsync()
     {
-        SelectedYear = DataSvc.CURRENT_YEAR;
+        SelectedYear = DataSvc.CurrentYear;
         SelectedLevel = 1;
-        RelevantYears = DataSvc.GetRelevantYears(DataSvc.CURRENT_YEAR);
+        RelevantYears = DataSvc.GetRelevantYears(DataSvc.CurrentYear);
 
         ReloadAccounts(SelectedStructureType, SelectedYear, SelectedLevel, SelectedAccountRange);
         IsLoading = false;
@@ -209,7 +253,7 @@
         {
             this.IsLoading = true;
             StateHasChanged();
-            ERofYear = await DataSvc.FetchERAccountGroupsForYear(structureT,
+            ERofYear = await DataSvc.FetchMainGroupsForYearlyER(structureT,
                                                                 SelectedYear,
                                                                 SelectedLevel,
                                                                 accountRange == AccountRange.AllAccounts);

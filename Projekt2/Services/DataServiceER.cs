@@ -6,19 +6,22 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore.Query.Internal;
 
 namespace Projekt2.Services
 {
 
     public class DataServiceER
     {
-        Project2Context _context;
+        private readonly Project2Context _context;
+        private readonly HelpersService _helpers;
 
-        public readonly int CURRENT_YEAR = 2017;
+        public readonly int CurrentYear = 2017;
 
-        public DataServiceER(Project2Context context)
+        public DataServiceER(Project2Context context, HelpersService helpers)
         {
             _context = context;
+            _helpers = helpers;
         }
 
 
@@ -34,59 +37,69 @@ namespace Projekt2.Services
             return result;
         }
 
-        public async Task<YearViewModel> FetchERAccountGroupsForYear(StructureType selectedType, int selectedYear, int selectedLevel, bool allExistingAccounts)
+
+        /** Yearly ER - Fetch main-groups **/
+        public async Task<YearViewModel> FetchMainGroupsForYearlyER(StructureType selectedType, int selectedYear, int selectedLevel, bool allExistingAccounts)
         {
-            var query = GetQueryToFetchAccountGroupsER(selectedType, new List<int> { selectedYear }, selectedLevel, allExistingAccounts);
-            List<AccountYearViewModel> accounts = await query.ToListAsync();
+            int previousYear = selectedYear - 1;
+            var years = new List<int> {previousYear, selectedYear};
 
-            var m = new YearTotalsViewModel
-            {
-                Year = selectedYear,
-                ExpensesActualTotal = accounts.Select(a => a.ExpensesActual).Sum(),
-                ExpensesBudgetTotal = accounts.Select(a => a.ExpensesBudget).Sum(),
-                IncomeActualTotal = accounts.Select(a => a.IncomeActual).Sum(),
-                IncomeBudgetTotal = accounts.Select(a => a.IncomeBudget).Sum(),
-            };
-            m.BalanceActualTotal = (m.IncomeActualTotal ?? 0) - (m.ExpensesActualTotal ?? 0);
-            m.BalanceBudgetTotal = (m.IncomeBudgetTotal ?? 0) - (m.ExpensesBudgetTotal ?? 0);
+            var query = GetQueryToFetchAccountGroupsER(selectedType, years, selectedLevel, allExistingAccounts);
 
-            // AccountGroup-Items which had no partner in LEFT-JOIN result in Objects where year was not set:
-            foreach(var a in accounts) 
+            List<AccountYearViewModel> allAccounts = await query.ToListAsync();
+            List<AccountYearViewModel> accountsForPreviousYear = allAccounts.Where(a => a.Year == previousYear).ToList();
+            List<AccountYearViewModel> accountsForSelectedYear = allAccounts.Where(a => a.Year == selectedYear).ToList();
+
+            foreach (AccountYearViewModel acc in accountsForSelectedYear)
             {
-                a.Year = selectedYear;
+                // For account-group-items which had no partner in LEFT-JOIN the year was not yet set:
+                acc.Year = selectedYear;
+
+                AccountYearViewModel accInPrevYear = accountsForPreviousYear.FirstOrDefault(a => a.AccountId == acc.AccountId);
+
+                if (accInPrevYear != null)
+                {
+                    SetPercentChangesBetweenTwoYears(accInPrevYear, acc, selectedYear);
+                }
             }
+
+            YearTotalsViewModel totalsForSelectedYear = GetTotalsForYears(years, allAccounts).FirstOrDefault(y => y.Year == selectedYear);
 
             return new YearViewModel
             {
                 Year = selectedYear,
-                Accounts = accounts,
-                AccountYearTotals = m
+                Accounts = accountsForSelectedYear,
+                AccountYearTotals = totalsForSelectedYear
             };
         }
 
 
-        public async Task<List<AccountYearViewModel>> FetchSubGroupsOfERAccountStatic(AccountYearViewModel ayear, StructureType selectedType, bool allExistingAccounts)
+        /** Yearly ER - Fetch SUB-groups **/
+        public async Task<List<AccountYearViewModel>> FetchSubGroupsForYearlyEr(AccountYearViewModel ayear, StructureType selectedType, bool allExistingAccounts)
         {
             if (ayear.AccountLevel >= 4)
             {
                 return null;
             }
-            YearViewModel m = await FetchERAccountGroupsForYear(selectedType, ayear.Year, (ayear.AccountLevel) + 1, allExistingAccounts);
+            YearViewModel m = await FetchMainGroupsForYearlyER(selectedType, ayear.Year, (ayear.AccountLevel) + 1, allExistingAccounts);
 
             return m.Accounts.Where(a => a.AccountId.Substring(0, ayear.AccountLevel) == ayear.AccountId).ToList();
         }
 
 
-        public async Task<MultipleYearsViewModel> FetchAccountGroupsForTimeline(StructureType selectedType, ERAccountType erAccountType, List<int> selectedYears, int selectedLevel, bool allExistingAccounts)
+        /** Timeline ER - Fetch main-groups **/
+        public async Task<MultipleYearsViewModel> FetchMainGroupsForTimelineEr(StructureType selectedType, ERAccountType erAccountType, List<int> selectedYears, int selectedLevel, bool allExistingAccounts)
         {
             var query = GetQueryToFetchAccountGroupsER(selectedType, selectedYears, selectedLevel, allExistingAccounts);
-            List<AccountYearViewModel> accounts = await query.ToListAsync();
+
+            // accounts contains all accounts as a flat list:
+            List<AccountYearViewModel> allAccounts = await query.ToListAsync();
 
             List<string> accountIds = new List<string>();
 
             if (selectedType == StructureType.Functions)
             {
-                accountIds = accounts.Select(a => a.AccountId)
+                accountIds = allAccounts.Select(a => a.AccountId)
                                      .OrderBy(a => a)
                                      .Distinct()
                                      .ToList();
@@ -96,29 +109,14 @@ namespace Projekt2.Services
             {
                 // all "Aufwand"-accounts resp. "Ertrag"-accounts start with the same number => use this fact for filtering:
                 string firstDigit = erAccountType == ERAccountType.Expenses ? "3" : "4";
-                accountIds = accounts.Where(a => a.AccountId.Substring(0, 1) == firstDigit)
+                accountIds = allAccounts.Where(a => a.AccountId.Substring(0, 1) == firstDigit)
                                      .Select(a => a.AccountId)
                                      .OrderBy(a => a)
                                      .Distinct()
                                      .ToList();
             }
 
-            List<YearTotalsViewModel> totalsForSelectedYears = new List<YearTotalsViewModel>();
-
-            foreach (var year in selectedYears)
-            {
-                var m = new YearTotalsViewModel
-                {
-                    Year = year,
-                    ExpensesActualTotal = accounts.Where(a => a.Year == year).Select(a => a.ExpensesActual).Sum(),
-                    ExpensesBudgetTotal = accounts.Where(a => a.Year == year).Select(a => a.ExpensesBudget).Sum(),
-                    IncomeActualTotal = accounts.Where(a => a.Year == year).Select(a => a.IncomeActual).Sum(),
-                    IncomeBudgetTotal = accounts.Where(a => a.Year == year).Select(a => a.IncomeBudget).Sum(),
-                };
-                m.BalanceActualTotal = (m.IncomeActualTotal ?? 0) - (m.ExpensesActualTotal ?? 0);
-                m.BalanceBudgetTotal = (m.IncomeBudgetTotal ?? 0) - (m.ExpensesBudgetTotal ?? 0);
-                totalsForSelectedYears.Add(m);
-            }
+            List<YearTotalsViewModel> totalsForSelectedYears = GetTotalsForYears(selectedYears, allAccounts);
 
             var result = new MultipleYearsViewModel
             {
@@ -130,35 +128,46 @@ namespace Projekt2.Services
             foreach (var id in accountIds)
             {
                 var yearlyAccounts = new List<AccountYearViewModel>();
-                foreach (var year in selectedYears)
+                for (int i = 0; i < selectedYears.Count; i++)
                 {
-                    var yearlyAccount = accounts.Where(a => a.AccountId == id && a.Year == year).ToList();
+                    // Check if an account for the given year / id is available
+                    var yearlyAcc = allAccounts.Where(a => a.AccountId == id && a.Year == selectedYears[i]).ToList();
 
-                    if (yearlyAccount.Count == 0)
+                    // If for the given year no account with this id is available, 
+                    // create a new account-object based on the infos of another account with the same id (setting expenses and incomes == 0)
+                    if (yearlyAcc.Count == 0)
                     {
-                        var ya = accounts.Where(a => a.AccountId == id).ToList();
-                        if (ya.Count == 1)
+                        var ya = allAccounts.FirstOrDefault(a => a.AccountId == id);
+                        if (ya != null)
                         {
                             yearlyAccounts.Add(new AccountYearViewModel
                             {
-                                Year = year,
-                                AccountId = ya[0].AccountId,
-                                AccountName = ya[0].AccountName,
-                                AccountLevel = ya[0].AccountLevel,
-                                ParentId = ya[0].ParentId,
-                                Type = ya[0].Type
+                                Year = selectedYears[i],
+                                AccountId = ya.AccountId,
+                                AccountName = ya.AccountName,
+                                AccountLevel = ya.AccountLevel,
+                                ParentId = ya.ParentId,
+                                Type = ya.Type
                             });
                         }
                     }
-                    else if (yearlyAccount.Count == 1)
+                    else if (yearlyAcc.Count == 1)
                     {
-                        yearlyAccounts.Add(yearlyAccount[0]);
+                        yearlyAccounts.Add(yearlyAcc[0]);
                     }
                     else
                     {
                         throw new Exception("Too many matching accounts!");
                     }
+
+                    // Given there is a previous year,
+                    // add percent change compared to previous year:
+                    if (i > 0)
+                    {
+                        SetPercentChangesBetweenTwoYears(yearlyAccounts[i - 1], yearlyAccounts[i], selectedYears[i]);
+                    }
                 }
+
                 result.AccountsWithMultipleYears.Add(new AccountMultipleYearsViewModel
                 {
                     Type = yearlyAccounts[0].Type,
@@ -170,17 +179,19 @@ namespace Projekt2.Services
                     YearlyAccounts = yearlyAccounts
                 });
             }
+
             return result;
         }
 
 
-        public async Task<List<AccountMultipleYearsViewModel>> FetchSubGroupsOfERAccountTimeline(AccountMultipleYearsViewModel accMultiYears, StructureType selectedType, ERAccountType selectedERAccountType, bool allExistingAccounts)
+        /** Timeline ER - Fetch SUB-groups **/
+        public async Task<List<AccountMultipleYearsViewModel>> FetchSubGroupsForTimelineEr(AccountMultipleYearsViewModel accMultiYears, StructureType selectedType, ERAccountType selectedERAccountType, bool allExistingAccounts)
         {
             if (accMultiYears.AccountLevel >= 4)
             {
                 return null;
             }
-            MultipleYearsViewModel m = await FetchAccountGroupsForTimeline(selectedType, selectedERAccountType, accMultiYears.SelectedYears, (accMultiYears.AccountLevel + 1), allExistingAccounts);
+            MultipleYearsViewModel m = await FetchMainGroupsForTimelineEr(selectedType, selectedERAccountType, accMultiYears.SelectedYears, (accMultiYears.AccountLevel + 1), allExistingAccounts);
 
             return m.AccountsWithMultipleYears.Where(a => a.AccountId.Substring(0, accMultiYears.AccountLevel) == accMultiYears.AccountId).ToList();
         }
@@ -198,7 +209,7 @@ namespace Projekt2.Services
                                             })
                                             .Select(o => new
                                             {
-                                                Id = o.Key.FunctionId != null ? o.Key.FunctionId : o.Key.SubjectId, // corresponds to property of groupBy condition
+                                                Id = o.Key.FunctionId ?? o.Key.SubjectId, // corresponds to property of groupBy condition
                                                 o.Key.Year, // property-name is inferred (=> 'Year')
                                                 ExpensesBudget = o.Sum(x => x.ExpensesBudget),
                                                 ExpensesActual = o.Sum(x => x.ExpensesEffective),
@@ -257,6 +268,89 @@ namespace Projekt2.Services
                                                  BalanceBudget = (aYear.IncomeBudget ?? 0) - (aYear.ExpensesBudget ?? 0)
                                              });
             }
+        }
+
+
+        private void SetPercentChangesBetweenTwoYears(AccountYearViewModel accPreviousYear, AccountYearViewModel accSelectedYear, int selectedYear)
+        {
+            if (selectedYear < CurrentYear)
+            {
+                accSelectedYear.PercentageChangeExpensesActual = _helpers.GetPercentageChange(accPreviousYear.ExpensesActual, accSelectedYear.ExpensesActual);
+                accSelectedYear.PercentageChangeIncomeActual = _helpers.GetPercentageChange(accPreviousYear.IncomeActual, accSelectedYear.IncomeActual);
+                accSelectedYear.PercentageChangeBalanceActual = _helpers.GetPercentageChange(accPreviousYear.BalanceActual, accSelectedYear.BalanceActual);
+            }
+            else if (selectedYear == CurrentYear)
+            {
+                accSelectedYear.PercentageChangeExpensesBudget = _helpers.GetPercentageChange(accPreviousYear.ExpensesActual, accSelectedYear.ExpensesBudget);
+                accSelectedYear.PercentageChangeIncomeBudget = _helpers.GetPercentageChange(accPreviousYear.IncomeActual, accSelectedYear.IncomeBudget);
+                accSelectedYear.PercentageChangeBalanceBudget = _helpers.GetPercentageChange(accPreviousYear.BalanceActual, accSelectedYear.BalanceBudget);
+
+            }
+            else if (selectedYear > CurrentYear)
+            {
+                accSelectedYear.PercentageChangeExpensesBudget = _helpers.GetPercentageChange(accPreviousYear.ExpensesBudget, accSelectedYear.ExpensesBudget);
+                accSelectedYear.PercentageChangeIncomeBudget = _helpers.GetPercentageChange(accPreviousYear.IncomeBudget, accSelectedYear.IncomeBudget);
+                accSelectedYear.PercentageChangeBalanceBudget = _helpers.GetPercentageChange(accPreviousYear.BalanceBudget, accSelectedYear.BalanceBudget);
+            }
+        }
+
+
+        private List<YearTotalsViewModel> GetTotalsForYears(List<int> years, List<AccountYearViewModel> allAccounts)
+        {
+            List<YearTotalsViewModel> totalsForSelectedYears = new List<YearTotalsViewModel>();
+
+            for (int i = 0; i < years.Count; i++)
+            {
+                var accSelectedY = allAccounts.Where(a => a.Year == years[i]).ToList();
+                bool hasAcc = accSelectedY.Any();
+
+                YearTotalsViewModel ts = new YearTotalsViewModel { Year = years[i] };
+
+                if (hasAcc)
+                {
+                    ts.ExpensesActualTotal = accSelectedY.Where(a => a.Year == years[i]).Select(a => a.ExpensesActual).Sum();
+                    ts.ExpensesBudgetTotal = accSelectedY.Where(a => a.Year == years[i]).Select(a => a.ExpensesBudget).Sum();
+                    ts.IncomeActualTotal = accSelectedY.Where(a => a.Year == years[i]).Select(a => a.IncomeActual).Sum();
+                    ts.IncomeBudgetTotal = accSelectedY.Where(a => a.Year == years[i]).Select(a => a.IncomeBudget).Sum();
+                    ts.BalanceActualTotal = (ts.IncomeActualTotal ?? 0) - (ts.ExpensesActualTotal ?? 0);
+                    ts.BalanceBudgetTotal = (ts.IncomeBudgetTotal ?? 0) - (ts.ExpensesBudgetTotal ?? 0);
+                }
+                else
+                {
+                    totalsForSelectedYears.Add(ts);
+                    continue;
+                }
+
+                // If a previous year exists and contains at least one account, calculate percentage of changes
+                if (i > 0 && allAccounts.Any(a => a.Year == years[i - 1]))
+                {
+                    // Get totals of previous year
+                    YearTotalsViewModel totalsOfPY = totalsForSelectedYears[i - 1];
+                    ts.HasPreviousYear = true;
+
+                    if (years[i] < CurrentYear)
+                    {
+                        ts.PercentageChangeExpensesActualTotal = _helpers.GetPercentageChange(totalsOfPY.ExpensesActualTotal, ts.ExpensesActualTotal);
+                        ts.PercentageChangeIncomeActualTotal = _helpers.GetPercentageChange(totalsOfPY.IncomeActualTotal, ts.IncomeActualTotal);
+                        ts.PercentageChangeBalanceActualTotal = _helpers.GetPercentageChange(totalsOfPY.BalanceActualTotal, ts.BalanceActualTotal);
+                    }
+                    else if (years[i] == CurrentYear)
+                    {
+                        ts.PercentageChangeExpensesBudgetTotal = _helpers.GetPercentageChange(totalsOfPY.ExpensesActualTotal, ts.ExpensesBudgetTotal);
+                        ts.PercentageChangeIncomeBudgetTotal = _helpers.GetPercentageChange(totalsOfPY.IncomeActualTotal, ts.IncomeBudgetTotal);
+                        ts.PercentageChangeBalanceBudgetTotal = _helpers.GetPercentageChange(totalsOfPY.BalanceActualTotal, ts.BalanceBudgetTotal);
+                    }
+                    else if(years[i] > CurrentYear)
+                    {
+                        ts.PercentageChangeExpensesBudgetTotal = _helpers.GetPercentageChange(totalsOfPY.ExpensesBudgetTotal, ts.ExpensesBudgetTotal);
+                        ts.PercentageChangeIncomeBudgetTotal = _helpers.GetPercentageChange(totalsOfPY.IncomeBudgetTotal, ts.IncomeBudgetTotal);
+                        ts.PercentageChangeBalanceBudgetTotal = _helpers.GetPercentageChange(totalsOfPY.BalanceBudgetTotal, ts.BalanceBudgetTotal);
+                    }
+                }
+
+                totalsForSelectedYears.Add(ts);
+            }
+            return totalsForSelectedYears;
         }
 
 

@@ -28,7 +28,7 @@ namespace Projekt2
             Configuration.GetConnectionString("DefaultConnection")));
 
             services.AddRazorPages();
-            services.AddServerSideBlazor();
+            services.AddServerSideBlazor(o => o.DetailedErrors = true);
 
             // Scoped means that a new instance will be created essentially per page load
             services.AddScoped<DataServiceER>();

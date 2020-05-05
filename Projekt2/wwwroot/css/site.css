@@ -194,13 +194,22 @@ app {
 
 /** Own CSS Styles **/
 
-.dp-form-group {
-    display: inline-block;
-    background-color: rgba(0, 0, 255, 0.1);
-    padding: 5px;
-    margin-right: 10px;
-    border-radius: 8px;
+td, th {
+    text-align: right;
 }
+
+    td.first-col,
+    th.first-col {
+        text-align: left;
+    }
+
+    .dp-form-group {
+        display: inline-block;
+        background-color: rgba(0, 0, 255, 0.1);
+        padding: 5px;
+        margin-right: 10px;
+        border-radius: 8px;
+    }
 
 .dp-label {
     margin: unset;
@@ -225,20 +234,58 @@ app {
         text-decoration: underline !important;
     }
 
+
+/* Define scrollable table with sticky-header */
+
+.content-scroll-wrap {
+    display: flex;
+    flex-flow: column;
+    height: 77vh;
+}
+
+.content-scroll {
+    min-width: 500px;
+    overflow-y: scroll;
+}
+
 .account-table-static {
     width: unset;
     min-width: 800px;
 }
 
-.acc-th {
+
+/* Start of workaround to keep borders of sticky-table headers visible during scrolling */
+
+table tbody:nth-of-type(1) tr:nth-of-type(1) td {
+    border-top: none !important;
+}
+
+table thead th {
+    border-top: none !important;
+    border-bottom: none !important;
+    box-shadow: inset 0 2px 0 #dee2e6, inset 0 -2px 0 #dee2e6;
+    padding: 2px 0;
+}
+
+/* End of Workaround */
+
+th.acc-th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: white;
     font-size: 0.9rem;
 }
 
-.pos-value {
+.acc-th.first-th {
+    text-align: left;
+}
+
+.green {
     color: green;
 }
 
-.neg-value {
+.red {
     color: red;
 }
 
@@ -295,4 +342,22 @@ app {
 
 .account-row-4 {
     background-color: rgba(0, 0, 0, 0.1);
+}
+
+
+/* Enables 45-degrees rotation of font-awesome icons */
+.fa-rotate-45 {
+    -webkit-transform: rotate(45deg);
+    -moz-transform: rotate(45deg);
+    -ms-transform: rotate(45deg);
+    -o-transform: rotate(45deg);
+    transform: rotate(45deg);
+}
+
+.fa-rotate-135 {
+    -webkit-transform: rotate(135deg);
+    -moz-transform: rotate(135deg);
+    -ms-transform: rotate(135deg);
+    -o-transform: rotate(135deg);
+    transform: rotate(135deg);
 }

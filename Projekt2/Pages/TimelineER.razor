@@ -40,47 +40,52 @@
 
 @if (IsLoading == false && ERDataForMultipleYears != null)
 {
-    <table class="table">
-        <thead>
-            <tr>
-                <th class="acc-th">
-                    Id / Konto-Name
-                </th>
-                @foreach (int y in ERDataForMultipleYears.SelectedYears)
-                {
-                    <th class="acc-th account-cell-@(y < DataSvc.CURRENT_YEAR ? "actual": "budget")">
-                        @(y < DataSvc.CURRENT_YEAR ? "Rg Jahr" :"Budget" ) @y
-                    </th>
-                }
-            </tr>
-        </thead>
-        <tbody>
+    <div class="content-scroll-wrap">
+        <div class="content-scroll">
 
-            @foreach (AccountMultipleYearsViewModel acc in ERDataForMultipleYears.AccountsWithMultipleYears)
-            {
-                <CascadingValue Value="@SelectedStructureType" Name="SelectedStructureType">
-                    <CascadingValue Value="@SelectedERAccountType" Name="SelectedERAccountType">
-                        <CascadingValue Value="@SelectedAccountRange" Name="SelectedAccountRange">
-                            <AccountTimeline AccountMultipleYears="acc"
-                                             LevelInGui="1" />
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th class="acc-th first-th">
+                            Id / Konto-Name
+                        </th>
+                        @foreach (int y in ERDataForMultipleYears.SelectedYears)
+                        {
+                            <th class="acc-th">
+                                @(y < DataSvc.CurrentYear ? "Rg Jahr" :"Budget" ) @y
+                            </th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+
+                    @foreach (AccountMultipleYearsViewModel acc in ERDataForMultipleYears.AccountsWithMultipleYears)
+                    {
+                        <CascadingValue Value="@SelectedStructureType" Name="SelectedStructureType">
+                            <CascadingValue Value="@SelectedERAccountType" Name="SelectedERAccountType">
+                                <CascadingValue Value="@SelectedAccountRange" Name="SelectedAccountRange">
+                                    <AccountTimeline AccountMultipleYears="acc"
+                                                     LevelInGui="1" />
+                                </CascadingValue>
+                            </CascadingValue>
                         </CascadingValue>
-                    </CascadingValue>
-                </CascadingValue>
-            }
-            <tr>
-                <th>
-                    @(SelectedERAccountType == ERAccountType.Balances.ToString() ? "Gesamt-Differenz" : "Total")
-                </th>
+                    }
+                    <tr>
+                        <th class="first-col">
+                            @(SelectedERAccountType == ERAccountType.Balances.ToString() ? "Gesamt-Differenz" : "Total")
+                        </th>
 
-                @foreach (YearTotalsViewModel m in ERDataForMultipleYears.ListOfAccountYearTotals)
-                {
-                    <th class="@(GetTotalCellClassValues(m, GetTotalValue(SelectedERAccountType, m)))">
-                        @(Helpers.FormatDecimal(GetTotalValue(SelectedERAccountType, m)))
-                    </th>
-                }
-            </tr>
-        </tbody>
-    </table>
+                        @foreach (YearTotalsViewModel m in ERDataForMultipleYears.ListOfAccountYearTotals)
+                        {
+                            <th class="@(GetTotalCellClassValues(m, GetTotalValue(SelectedERAccountType, m)))">
+                                @(Helpers.FormatDecimal(GetTotalValue(SelectedERAccountType, m)))
+                            </th>
+                        }
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
 }
 
 @code {
@@ -106,7 +111,7 @@
         SetDisabledStructureTypes(SelectedERAccountType);
         SetDisabledERAccountTypes(SelectedStructureType);
 
-        this.SelectedYears = DataSvc.GetRelevantYears(DataSvc.CURRENT_YEAR);
+        this.SelectedYears = DataSvc.GetRelevantYears(DataSvc.CurrentYear);
         ReloadAccounts(SelectedStructureType, SelectedYears, SelectedERAccountType, SelectedLevel, SelectedAccountRange);
         IsLoading = false;
     }
@@ -114,7 +119,7 @@
 
     string GetTotalCellClassValues(YearTotalsViewModel m, decimal? value)
     {
-        string result = $"account-cell-{(m.Year < DataSvc.CURRENT_YEAR ? "actual" : "budget")}";
+        string result = $"total account-cell-{(m.Year < DataSvc.CurrentYear ? "actual" : "budget")}";
 
         if (SelectedERAccountType == ERAccountType.Balances.ToString())
         {
@@ -130,9 +135,9 @@
         {
             return eRAccountType switch
             {
-                ERAccountType.Expenses => m.Year < DataSvc.CURRENT_YEAR ? m.ExpensesActualTotal : m.ExpensesBudgetTotal,
-                ERAccountType.Income => m.Year < DataSvc.CURRENT_YEAR ? m.IncomeActualTotal : m.IncomeBudgetTotal,
-                ERAccountType.Balances => m.Year < DataSvc.CURRENT_YEAR ? m.BalanceActualTotal : m.BalanceBudgetTotal,
+                ERAccountType.Expenses => m.Year < DataSvc.CurrentYear ? m.ExpensesActualTotal : m.ExpensesBudgetTotal,
+                ERAccountType.Income => m.Year < DataSvc.CurrentYear ? m.IncomeActualTotal : m.IncomeBudgetTotal,
+                ERAccountType.Balances => m.Year < DataSvc.CurrentYear ? m.BalanceActualTotal : m.BalanceBudgetTotal,
                 _ => null
             };
         }
@@ -206,7 +211,7 @@
         {
             this.IsLoading = true;
             StateHasChanged();
-            ERDataForMultipleYears = await DataSvc.FetchAccountGroupsForTimeline(structureType,
+            ERDataForMultipleYears = await DataSvc.FetchMainGroupsForTimelineEr(structureType,
                                                                                  erAccountType,
                                                                                  selectedYears,
                                                                                  SelectedLevel,
