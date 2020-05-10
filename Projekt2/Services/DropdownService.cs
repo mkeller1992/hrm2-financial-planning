@@ -37,6 +37,8 @@ namespace Projekt2.Services
                 {
                     {StructureType.Functions.ToString(), "Nach Funktionsgruppen"},
                     {StructureType.Subjects.ToString(), "Nach Sachgruppen"},
+                    {StructureType.FunctionsThenSubjects.ToString(), "Nach Funktions-/ Sachgruppen"},
+                    {StructureType.SubjectsThenFunctions.ToString(), "Nach Sach-/ Funktionsgruppen"},
                 };
 
 

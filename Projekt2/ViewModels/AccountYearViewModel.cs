@@ -7,11 +7,14 @@ namespace Projekt2.ViewModels
 {
     public class AccountYearViewModel
     {
-        public string Type { get; set; }
+        public string Type { get; set; } // FG, ER etc.
         public string AccountId { get; set; }
         public string AccountName { get; set; }
         public int AccountLevel { get; set; }
         public string ParentId { get; set; }
+
+        public string IdOfParentInSuperordinateStructure { get; set; } // refers to id of top-level account, in case subject-/function-groups are mixed
+
         public int Year { get; set; }
         public decimal? ExpensesBudget { get; set; }
         public decimal? PercentageChangeExpensesBudget { get; set; }

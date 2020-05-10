@@ -61,7 +61,8 @@
                         <th class="acc-th">
                             Diff.B.
                         </th>
-                        @if (SelectedStructureType == StructureType.Functions.ToString())
+                        @if (SelectedStructureType == StructureType.Functions.ToString() ||
+                             SelectedStructureType == StructureType.FunctionsThenSubjects.ToString())
                         {
                             <th class="acc-th">
                                 Budget. Saldo
@@ -85,7 +86,8 @@
                         <th class="acc-th account-cell-actual">
                             Diff.E.
                         </th>
-                        @if (SelectedStructureType == StructureType.Functions.ToString())
+                        @if (SelectedStructureType == StructureType.Functions.ToString() ||
+                             SelectedStructureType == StructureType.FunctionsThenSubjects.ToString())
                         {
                             <th class="acc-th account-cell-actual">
                                 Saldo
@@ -129,7 +131,8 @@
                             @(Helpers.GetColorIfPositiveFav(ERofYear.AccountYearTotals.PercentageChangeIncomeBudgetTotal, 0))">
                             @(Helpers.FormatPercentage(ERofYear.AccountYearTotals.PercentageChangeIncomeBudgetTotal))
                         </th>
-                        @if (SelectedStructureType == StructureType.Functions.ToString())
+                        @if (SelectedStructureType == StructureType.Functions.ToString() ||
+                             SelectedStructureType == StructureType.FunctionsThenSubjects.ToString())
                         {
                             <th class="total account-cell-budget">
                                 @(Helpers.FormatDecimal(ERofYear.AccountYearTotals.BalanceBudgetTotal))
@@ -156,7 +159,8 @@
                             @(Helpers.GetColorIfPositiveFav(ERofYear.AccountYearTotals.PercentageChangeIncomeActualTotal, 0))">
                             @(Helpers.FormatPercentage(ERofYear.AccountYearTotals.PercentageChangeIncomeActualTotal))
                         </th>
-                        @if (SelectedStructureType == StructureType.Functions.ToString())
+                        @if (SelectedStructureType == StructureType.Functions.ToString() ||
+                             SelectedStructureType == StructureType.FunctionsThenSubjects.ToString())
                         {
                             <th class="total account-cell-actual">
                                 @(Helpers.FormatDecimal(ERofYear.AccountYearTotals.BalanceActualTotal))

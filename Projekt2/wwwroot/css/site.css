@@ -312,6 +312,11 @@ th.acc-th {
     font-size: 0.85rem;
 }
 
+.text-level-5 {
+    font-size: 0.8rem;
+}
+
+
 .account-label-1 {
     padding-left: 0.75rem !important;
 }
@@ -328,6 +333,10 @@ th.acc-th {
     padding-left: 1.5rem !important;
 }
 
+.account-label-5 {
+    padding-left: 1.75rem !important;
+}
+
 .account-row-1 {
     background-color: rgba(0, 0, 0, 0.01);
 }
@@ -342,6 +351,10 @@ th.acc-th {
 
 .account-row-4 {
     background-color: rgba(0, 0, 0, 0.1);
+}
+
+.account-row-5 {
+    background-color: rgba(0, 0, 0, 0.13);
 }
 
 

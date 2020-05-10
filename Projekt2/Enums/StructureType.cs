@@ -7,6 +7,6 @@ namespace Projekt2.Services.Enums
 {
     public enum StructureType
     {
-        Functions, Subjects
+        Functions, Subjects, FunctionsThenSubjects, SubjectsThenFunctions
     }
 }

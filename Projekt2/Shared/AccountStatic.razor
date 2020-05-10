@@ -24,7 +24,7 @@
         <td class="account-cell-budget text-level-@(LevelInGui) @(Helpers.GetColorIfPositiveFav(AccountYear.PercentageChangeIncomeBudget, 0))">
             @(AreChildrenExpanded ? "" : Helpers.FormatPercentage(AccountYear.PercentageChangeIncomeBudget))
         </td>
-        @if (SelectedStructureType == StructureType.Functions.ToString())
+        @if (SelectedStructureType == StructureType.Functions.ToString() || SelectedStructureType == StructureType.FunctionsThenSubjects.ToString())
         {
             <td class="account-cell-budget text-level-@(LevelInGui)">
                 @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.BalanceBudget))
@@ -48,7 +48,7 @@
         <td class="account-cell-actual text-level-@(LevelInGui) @(Helpers.GetColorIfPositiveFav(AccountYear.PercentageChangeIncomeActual, 0))">
             @(AreChildrenExpanded ? "" : Helpers.FormatPercentage(AccountYear.PercentageChangeIncomeActual))
         </td>
-        @if (SelectedStructureType == StructureType.Functions.ToString())
+        @if (SelectedStructureType == StructureType.Functions.ToString() || SelectedStructureType == StructureType.FunctionsThenSubjects.ToString())
         {
             <td class="account-cell-actual text-level-@(LevelInGui)">
                 @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.BalanceActual))
