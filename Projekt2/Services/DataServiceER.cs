@@ -82,6 +82,7 @@ namespace Projekt2.Services
                 int levelOfAccountsToFetch = ayear.IdOfParentInSuperordinateStructure == null ? 1 : (ayear.AccountLevel + 1);
 
                 return await FetchSubGroupsInMixedStructureInYearlyER(selectedType,
+                                                                     ERAccountType.ExpensesAndIncomes,
                                                                         idOfParentInSuperordinateStructure,
                                                                         ayear.AccountId,
                                                                         levelOfAccountsToFetch,
@@ -97,6 +98,7 @@ namespace Projekt2.Services
 
         /* Fetch sub-groups if selected mode is 'function-accounts with underlying subject-accounts' */
         private async Task<List<AccountYearViewModel>> FetchSubGroupsInMixedStructureInYearlyER(StructureType structureType,
+                                                                                                ERAccountType erAccountType,
                                                                                                    string idOfParentInSuperordinateStructure,
                                                                                                    string idOfSelectedAccount,
                                                                                                    int levelOfSubordinatedAccounts,
@@ -105,7 +107,7 @@ namespace Projekt2.Services
             int previousYear = selectedYear - 1;
             List<int> years = new List<int> { previousYear, selectedYear };
 
-            var query = GetQueryForErSubAccountsInMixedStructure(structureType, idOfParentInSuperordinateStructure, idOfSelectedAccount, levelOfSubordinatedAccounts, years);
+            var query = GetQueryForErSubAccountsInMixedStructure(structureType, erAccountType, idOfParentInSuperordinateStructure, idOfSelectedAccount, levelOfSubordinatedAccounts, years);
 
             List<AccountYearViewModel> accountsForPreviousYear = await query.Where(a => a.Year == previousYear).ToListAsync();
             List<AccountYearViewModel> accountsForSelectedYear = await query.Where(a => a.Year == selectedYear).ToListAsync();
@@ -129,8 +131,9 @@ namespace Projekt2.Services
 
             // accounts contains all accounts as a flat list:
             List<AccountYearViewModel> allAccounts = await query.ToListAsync();
+            bool isFunctionGroups = selectedType == StructureType.Functions || selectedType == StructureType.FunctionsThenSubjects;
 
-            return AssembleMultiYearsAccountModels(selectedType, erAccountType, selectedYears, allAccounts);
+            return AssembleMultiYearsAccountModels(isFunctionGroups, erAccountType, selectedYears, allAccounts);
         }
 
 
@@ -154,13 +157,15 @@ namespace Projekt2.Services
                 int levelOfSubordinatedAccounts = accMultiYears.IdOfParentInSuperordinateStructure == null ? 1 : (accMultiYears.AccountLevel + 1);
 
                 List<AccountYearViewModel> allAccounts = await GetQueryForErSubAccountsInMixedStructure(selectedType,
+                                                                                         selectedERAccountType,
                                                                                          idOfParentInSuperordinateStructure,
                                                                                          accMultiYears.AccountId,
                                                                                          levelOfSubordinatedAccounts,
                                                                                          accMultiYears.SelectedYears)
                                                                                          .ToListAsync();
 
-                multiYearsModel = AssembleMultiYearsAccountModels(selectedType, selectedERAccountType, accMultiYears.SelectedYears, allAccounts);                
+                bool isFunctionGroups = selectedType == StructureType.SubjectsThenFunctions;
+                multiYearsModel = AssembleMultiYearsAccountModels(isFunctionGroups, selectedERAccountType, accMultiYears.SelectedYears, allAccounts);                
 
                 foreach (AccountMultipleYearsViewModel acc in multiYearsModel.AccountsWithMultipleYears)
                 {
@@ -177,7 +182,8 @@ namespace Projekt2.Services
                 List<AccountYearViewModel> allAccounts = await query.Where(a => a.AccountId.Substring(0, accMultiYears.AccountLevel) == selectedAccountId)
                                                                     .ToListAsync();
 
-                multiYearsModel = AssembleMultiYearsAccountModels(selectedType, selectedERAccountType, accMultiYears.SelectedYears, allAccounts);
+                bool isFunctionGroups = selectedType == StructureType.Functions;
+                multiYearsModel = AssembleMultiYearsAccountModels(isFunctionGroups, selectedERAccountType, accMultiYears.SelectedYears, allAccounts);
             }
 
             return multiYearsModel?.AccountsWithMultipleYears ?? null;
@@ -248,6 +254,7 @@ namespace Projekt2.Services
 
 
         private IQueryable<AccountYearViewModel> GetQueryForErSubAccountsInMixedStructure(StructureType structureType,
+                                                                                          ERAccountType erAccountType,
                                                                                           string idOfParentInSuperordinateStructure,
                                                                                           string idOfSelectedAccount,
                                                                                           int levelOfSubordinatedAccounts,
@@ -274,6 +281,7 @@ namespace Projekt2.Services
                     query = query.Where(a => a.SubjectId.Substring(0, (levelOfSubordinatedAccounts - 1)) == idOfSelectedAccount);
                 }
             }
+            // If subject-accounts represent the superordinated layer:
             else
             {
                 query = query.Where(a => a.SubjectId.Substring(0, levelOfSuperAcc) == idOfSuperAcc);
@@ -282,6 +290,13 @@ namespace Projekt2.Services
                 {
                     query = query.Where(a => a.FunctionId.Substring(0, (levelOfSubordinatedAccounts - 1)) == idOfSelectedAccount);
                 }
+            }
+
+            // Check if only incomes or only expenses need to be fetched:
+            if (erAccountType == ERAccountType.Expenses || erAccountType == ERAccountType.Income)
+            {
+                string firstDigit = erAccountType == ERAccountType.Expenses ? Constants.Constants.FirstDigitOfExpenses : Constants.Constants.FirstDigitOfIncomes;
+                query = query.Where(a => a.SubjectId.Substring(0, 1) == firstDigit);
             }
 
             var accountYears = query.GroupBy(ayear => new
@@ -355,22 +370,23 @@ namespace Projekt2.Services
 
 
         /* Assembles models that contain the values of an account for multiple years. */
-        private MultipleYearsViewModel AssembleMultiYearsAccountModels(StructureType selectedType,
+        private MultipleYearsViewModel AssembleMultiYearsAccountModels(bool isFunctionGroups,
                                                                        ERAccountType erAccountType,
                                                                        List<int> selectedYears,
                                                                        List<AccountYearViewModel> allAccounts)
         {
             List<string> accountIds = new List<string>();
 
-            if (selectedType == StructureType.Functions || selectedType == StructureType.FunctionsThenSubjects)
+            // In case the incoming accounts are function-groups
+            if (isFunctionGroups)
             {
                 accountIds = allAccounts.Select(a => a.AccountId)
                                      .OrderBy(a => a)
                                      .Distinct()
                                      .ToList();
             }
-            // in case of "Gliederung nach Sachgruppen" map only accounts that correspond to selected type of ER-account (=> Aufwand or Ertrag)
-            else if (selectedType == StructureType.Subjects || selectedType == StructureType.SubjectsThenFunctions)
+            // In case the incoming accounts are subject-groups
+            else
             {
                 // all "Aufwand"-accounts resp. "Ertrag"-accounts start with the same number => use this fact for filtering:
                 string firstDigit = erAccountType == ERAccountType.Expenses ? Constants.Constants.FirstDigitOfExpenses : Constants.Constants.FirstDigitOfIncomes;

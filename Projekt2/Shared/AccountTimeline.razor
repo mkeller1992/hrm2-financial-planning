@@ -20,7 +20,7 @@
                 decimal? percentChange = GetAccountChange(SelectedERAccountType, m);
                 string color = GetColor(SelectedERAccountType, m);
 
-                @roundedVal
+                @Helpers.FormatDecimal(roundedVal)
 
                 <span class="@color">
                     @if (percentChange == 0)
@@ -109,14 +109,14 @@
         {
             return accType switch
             {
-                ERAccountType.Expenses => m.Year < DataSvc.CurrentYear ? h.GetColorIfNegativeFav(m.PercentageChangeExpensesActual) : 
+                ERAccountType.Expenses => m.Year < DataSvc.CurrentYear ? h.GetColorIfNegativeFav(m.PercentageChangeExpensesActual) :
                                                                          h.GetColorIfNegativeFav(m.PercentageChangeExpensesBudget),
-                ERAccountType.Income => m.Year < DataSvc.CurrentYear ? h.GetColorIfPositiveFav(m.PercentageChangeIncomeActual) : 
+                ERAccountType.Income => m.Year < DataSvc.CurrentYear ? h.GetColorIfPositiveFav(m.PercentageChangeIncomeActual) :
                                                                        h.GetColorIfPositiveFav(m.PercentageChangeIncomeBudget),
                 ERAccountType.Balances => m.Year < DataSvc.CurrentYear ? h.GetColorIfPositiveFav(m.PercentageChangeBalanceActual) :
                                                                          h.GetColorIfPositiveFav(m.PercentageChangeBalanceBudget),
                 _ => null
-                };
+            };
         }
         return null;
     }
@@ -135,7 +135,7 @@
 
     async void OnAccountClicked()
     {
-        if (AccountMultipleYears.AccountLevel == 4)
+        if (AccountMultipleYears.AccountLevel >= 4)
         {
             return;
         }
@@ -148,6 +148,14 @@
             Enum.TryParse(SelectedAccountRange, out AccountRange selectRange))
         {
             AccountMultipleYears.Children = await DataSvc.FetchSubGroupsForTimelineEr(AccountMultipleYears, selectStructureT, selectErAccT, selectRange == AccountRange.AllAccounts);
+
+            if(AccountMultipleYears.Children == null || AccountMultipleYears.Children.Count == 0)
+            {
+                // Revers 'expand'-command
+                AreChildrenExpanded = false;
+                // Remove link on Account
+                AccountMultipleYears.AccountLevel = 99;
+            }
         }
         StateHasChanged();
     }

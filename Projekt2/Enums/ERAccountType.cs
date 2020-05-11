@@ -7,6 +7,6 @@ namespace Projekt2.Services.Enums
 {
     public enum ERAccountType
     {
-        Expenses, Income, Balances
+        Expenses, Income, Balances, ExpensesAndIncomes
     }
 }
