@@ -7,7 +7,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore.Query.Internal;
-using Projekt2.Dtos;
+using Projekt2.Constants;
+using Projekt2.Models;
 
 namespace Projekt2.Services
 {
@@ -16,8 +17,6 @@ namespace Projekt2.Services
     {
         private readonly Project2Context _context;
         private readonly HelpersService _helpers;
-
-        public readonly int CurrentYear = 2017;
 
         public DataServiceER(Project2Context context, HelpersService helpers)
         {
@@ -32,7 +31,31 @@ namespace Projekt2.Services
             int count = -2;
             while (count < 5)
             {
-                result.Add((currentYear + count));
+                result.Add(currentYear + count);
+                count++;
+            }
+            return result;
+        }
+
+        public List<int> GetPreviousYears(int currentYear, int numberOfYears)
+        {
+            var result = new List<int>();
+            int count = -1;
+            while (count >= -numberOfYears)
+            {
+                result.Add(currentYear + count);
+                count--;
+            }
+            return result;
+        }
+
+        public List<int> GetFutureYearsIncludingCurrent(int currentYear, int numberOfYears)
+        {
+            var result = new List<int>();
+            int count = 0;
+            while (count < numberOfYears)
+            {
+                result.Add(currentYear + count);
                 count++;
             }
             return result;
@@ -45,7 +68,7 @@ namespace Projekt2.Services
             int previousYear = selectedYear - 1;
             var years = new List<int> { previousYear, selectedYear };
 
-            var query = GetQueryForErAccountsInPlainStructure(selectedType, years, selectedLevel, allExistingAccounts);
+            var query = GetQueryForErAccounts(selectedType, years, selectedLevel, allExistingAccounts);
 
             List<AccountYearViewModel> allAccounts = await query.ToListAsync();
             List<AccountYearViewModel> accountsForPreviousYear = allAccounts.Where(a => a.Year == previousYear).OrderBy(a => a.AccountId).ToList();
@@ -123,7 +146,7 @@ namespace Projekt2.Services
         /** Timeline ER - Fetch main-groups **/
         public async Task<MultipleYearsViewModel> FetchMainGroupsForTimelineEr(StructureType selectedType, ERAccountType erAccountType, List<int> selectedYears, int selectedLevel, bool allExistingAccounts)
         {
-            var query = GetQueryForErAccountsInPlainStructure(selectedType, selectedYears, selectedLevel, allExistingAccounts);
+            var query = GetQueryForErAccounts(selectedType, selectedYears, selectedLevel, allExistingAccounts);
 
             // accounts contains all accounts as a flat list:
             List<AccountYearViewModel> allAccounts = await query.ToListAsync();
@@ -166,7 +189,7 @@ namespace Projekt2.Services
             }
             else if (selectedType == StructureType.Functions || selectedType == StructureType.Subjects)
             {
-                var query = GetQueryForErAccountsInPlainStructure(selectedType, accMultiYears.SelectedYears, (accMultiYears.AccountLevel + 1), allExistingAccounts);
+                var query = GetQueryForErAccounts(selectedType, accMultiYears.SelectedYears, (accMultiYears.AccountLevel + 1), allExistingAccounts);
 
                 // accounts contains all accounts as a flat list:
                 // Pick all accounts, whose id starts with the clicked account's id
@@ -181,7 +204,7 @@ namespace Projekt2.Services
         }
 
 
-        private IQueryable<AccountYearViewModel> GetQueryForErAccountsInPlainStructure(StructureType selectedType,
+        private IQueryable<AccountYearViewModel> GetQueryForErAccounts(StructureType selectedType,
                                                                                       List<int> selectedYears,
                                                                                       int selectedLevel,
                                                                                       bool allExistingAccounts)
@@ -286,7 +309,7 @@ namespace Projekt2.Services
             // Check if only incomes or only expenses need to be fetched:
             if (erAccountType == ERAccountType.Expenses || erAccountType == ERAccountType.Income)
             {
-                string firstDigit = erAccountType == ERAccountType.Expenses ? Constants.Constants.FirstDigitOfExpenses : Constants.Constants.FirstDigitOfIncomes;
+                string firstDigit = erAccountType == ERAccountType.Expenses ? Const.FirstDigitOfExpenses : Const.FirstDigitOfIncomes;
                 query = query.Where(a => a.SubjectId.Substring(0, 1) == firstDigit);
             }
 
@@ -361,7 +384,7 @@ namespace Projekt2.Services
 
 
         /* Assembles models that contain the values of an account for multiple years. */
-        private MultipleYearsViewModel AssembleMultiYearsAccountModels(bool isFunctionGroups,
+        internal MultipleYearsViewModel AssembleMultiYearsAccountModels(bool isFunctionGroups,
                                                                        ERAccountType erAccountType,
                                                                        List<int> selectedYears,
                                                                        List<AccountYearViewModel> allAccounts)
@@ -383,11 +406,11 @@ namespace Projekt2.Services
 
                 if (erAccountType == ERAccountType.Expenses || erAccountType == ERAccountType.Balances) 
                 {
-                    allowedFirstDigits.Add(Constants.Constants.FirstDigitOfExpenses);
+                    allowedFirstDigits.Add(Const.FirstDigitOfExpenses);
                 }
                 if (erAccountType == ERAccountType.Income || erAccountType == ERAccountType.Balances)
                 {
-                    allowedFirstDigits.Add(Constants.Constants.FirstDigitOfIncomes);
+                    allowedFirstDigits.Add(Const.FirstDigitOfIncomes);
                 }
 
                 // all "Aufwand"-accounts resp. "Ertrag"-accounts start with the same number => use this fact for filtering:
@@ -470,20 +493,20 @@ namespace Projekt2.Services
                                                       AccountYearViewModel accSelectedYear,
                                                       int selectedYear)
         {
-            if (selectedYear < CurrentYear)
+            if (selectedYear < Const.CurrentYear)
             {
                 accSelectedYear.PercentageChangeExpensesActual = _helpers.GetPercentageChange(accPreviousYear.ExpensesActual, accSelectedYear.ExpensesActual);
                 accSelectedYear.PercentageChangeIncomeActual = _helpers.GetPercentageChange(accPreviousYear.IncomeActual, accSelectedYear.IncomeActual);
                 accSelectedYear.PercentageChangeBalanceActual = _helpers.GetPercentageChange(accPreviousYear.BalanceActual, accSelectedYear.BalanceActual);
             }
-            else if (selectedYear == CurrentYear)
+            else if (selectedYear == Const.CurrentYear)
             {
                 accSelectedYear.PercentageChangeExpensesBudget = _helpers.GetPercentageChange(accPreviousYear.ExpensesActual, accSelectedYear.ExpensesBudget);
                 accSelectedYear.PercentageChangeIncomeBudget = _helpers.GetPercentageChange(accPreviousYear.IncomeActual, accSelectedYear.IncomeBudget);
                 accSelectedYear.PercentageChangeBalanceBudget = _helpers.GetPercentageChange(accPreviousYear.BalanceActual, accSelectedYear.BalanceBudget);
 
             }
-            else if (selectedYear > CurrentYear)
+            else if (selectedYear > Const.CurrentYear)
             {
                 accSelectedYear.PercentageChangeExpensesBudget = _helpers.GetPercentageChange(accPreviousYear.ExpensesBudget, accSelectedYear.ExpensesBudget);
                 accSelectedYear.PercentageChangeIncomeBudget = _helpers.GetPercentageChange(accPreviousYear.IncomeBudget, accSelectedYear.IncomeBudget);
@@ -525,19 +548,19 @@ namespace Projekt2.Services
                     YearTotalsViewModel totalsOfPY = totalsForSelectedYears[i - 1];
                     ts.HasPreviousYear = true;
 
-                    if (years[i] < CurrentYear)
+                    if (years[i] < Const.CurrentYear)
                     {
                         ts.PercentageChangeExpensesActualTotal = _helpers.GetPercentageChange(totalsOfPY.ExpensesActualTotal, ts.ExpensesActualTotal);
                         ts.PercentageChangeIncomeActualTotal = _helpers.GetPercentageChange(totalsOfPY.IncomeActualTotal, ts.IncomeActualTotal);
                         ts.PercentageChangeBalanceActualTotal = _helpers.GetPercentageChange(totalsOfPY.BalanceActualTotal, ts.BalanceActualTotal);
                     }
-                    else if (years[i] == CurrentYear)
+                    else if (years[i] == Const.CurrentYear)
                     {
                         ts.PercentageChangeExpensesBudgetTotal = _helpers.GetPercentageChange(totalsOfPY.ExpensesActualTotal, ts.ExpensesBudgetTotal);
                         ts.PercentageChangeIncomeBudgetTotal = _helpers.GetPercentageChange(totalsOfPY.IncomeActualTotal, ts.IncomeBudgetTotal);
                         ts.PercentageChangeBalanceBudgetTotal = _helpers.GetPercentageChange(totalsOfPY.BalanceActualTotal, ts.BalanceBudgetTotal);
                     }
-                    else if (years[i] > CurrentYear)
+                    else if (years[i] > Const.CurrentYear)
                     {
                         ts.PercentageChangeExpensesBudgetTotal = _helpers.GetPercentageChange(totalsOfPY.ExpensesBudgetTotal, ts.ExpensesBudgetTotal);
                         ts.PercentageChangeIncomeBudgetTotal = _helpers.GetPercentageChange(totalsOfPY.IncomeBudgetTotal, ts.IncomeBudgetTotal);

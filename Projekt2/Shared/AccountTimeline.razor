@@ -1,6 +1,8 @@
 ﻿@inject DataServiceER DataSvc
 @inject HelpersService Helpers
 
+@using Projekt2.Constants
+
 
 <tr class="account-row-@(LevelInGui)">
     <td class="account-label-@(LevelInGui) text-level-@(LevelInGui) first-col">
@@ -96,9 +98,9 @@
         {
             return accType switch
             {
-                ERAccountType.Expenses => m.Year < DataSvc.CurrentYear ? m.ExpensesActual : m.ExpensesBudget,
-                ERAccountType.Income => m.Year < DataSvc.CurrentYear ? m.IncomeActual : m.IncomeBudget,
-                ERAccountType.Balances => m.Year < DataSvc.CurrentYear ? m.BalanceActual : m.BalanceBudget,
+                ERAccountType.Expenses => m.Year < Const.CurrentYear ? m.ExpensesActual : m.ExpensesBudget,
+                ERAccountType.Income => m.Year < Const.CurrentYear ? m.IncomeActual : m.IncomeBudget,
+                ERAccountType.Balances => m.Year < Const.CurrentYear ? m.BalanceActual : m.BalanceBudget,
                 _ => null
             };
         }
@@ -111,9 +113,9 @@
         {
             return accType switch
             {
-                ERAccountType.Expenses => m.Year < DataSvc.CurrentYear ? m.PercentageChangeExpensesActual : m.PercentageChangeExpensesBudget,
-                ERAccountType.Income => m.Year < DataSvc.CurrentYear ? m.PercentageChangeIncomeActual : m.PercentageChangeIncomeBudget,
-                ERAccountType.Balances => m.Year < DataSvc.CurrentYear ? m.PercentageChangeBalanceActual : m.PercentageChangeBalanceBudget,
+                ERAccountType.Expenses => m.Year < Const.CurrentYear ? m.PercentageChangeExpensesActual : m.PercentageChangeExpensesBudget,
+                ERAccountType.Income => m.Year < Const.CurrentYear ? m.PercentageChangeIncomeActual : m.PercentageChangeIncomeBudget,
+                ERAccountType.Balances => m.Year < Const.CurrentYear ? m.PercentageChangeBalanceActual : m.PercentageChangeBalanceBudget,
                 _ => null
             };
         }
@@ -128,11 +130,11 @@
         {
             return accType switch
             {
-                ERAccountType.Expenses => m.Year < DataSvc.CurrentYear ? h.GetColorIfNegativeFav(m.PercentageChangeExpensesActual) :
+                ERAccountType.Expenses => m.Year < Const.CurrentYear ? h.GetColorIfNegativeFav(m.PercentageChangeExpensesActual) :
                                                                          h.GetColorIfNegativeFav(m.PercentageChangeExpensesBudget),
-                ERAccountType.Income => m.Year < DataSvc.CurrentYear ? h.GetColorIfPositiveFav(m.PercentageChangeIncomeActual) :
+                ERAccountType.Income => m.Year < Const.CurrentYear ? h.GetColorIfPositiveFav(m.PercentageChangeIncomeActual) :
                                                                        h.GetColorIfPositiveFav(m.PercentageChangeIncomeBudget),
-                ERAccountType.Balances => m.Year < DataSvc.CurrentYear ? h.GetColorIfPositiveFav(m.PercentageChangeBalanceActual) :
+                ERAccountType.Balances => m.Year < Const.CurrentYear ? h.GetColorIfPositiveFav(m.PercentageChangeBalanceActual) :
                                                                          h.GetColorIfPositiveFav(m.PercentageChangeBalanceBudget),
                 _ => null
             };
@@ -143,7 +145,7 @@
 
     string GetAccCellClassValues(AccountYearViewModel m, decimal? value)
     {
-        string result = $"account-cell-{(m.Year < DataSvc.CurrentYear ? "actual" : "budget")}";
+        string result = $"account-cell-{(m.Year < Const.CurrentYear ? "actual" : "budget")}";
         result += $" text-level-{LevelInGui}";
         if (SelectedERAccountType == ERAccountType.Balances.ToString())
         {

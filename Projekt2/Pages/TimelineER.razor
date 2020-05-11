@@ -4,6 +4,8 @@
 @inject DropdownService DropdownSvc
 @inject IJSRuntime jsRuntime
 
+@using Projekt2.Constants
+
 
 
 @if (IsLoading)
@@ -52,7 +54,7 @@
                         @foreach (int y in ERDataForMultipleYears.SelectedYears)
                         {
                             <th class="acc-th">
-                                @(y < DataSvc.CurrentYear ? "Rg Jahr" :"Budget" ) @y
+                                @(y < Const.CurrentYear ? "Rg Jahr" :"Budget" ) @y
                             </th>
                         }
                     </tr>
@@ -111,7 +113,7 @@
         SetDisabledStructureTypes(SelectedERAccountType);
         SetDisabledERAccountTypes(SelectedStructureType);
 
-        this.SelectedYears = DataSvc.GetRelevantYears(DataSvc.CurrentYear);
+        this.SelectedYears = DataSvc.GetRelevantYears(Const.CurrentYear);
         ReloadAccounts(SelectedStructureType, SelectedYears, SelectedERAccountType, SelectedLevel, SelectedAccountRange);
         IsLoading = false;
     }
@@ -119,7 +121,7 @@
 
     string GetTotalCellClassValues(YearTotalsViewModel m, decimal? value)
     {
-        string result = $"total account-cell-{(m.Year < DataSvc.CurrentYear ? "actual" : "budget")}";
+        string result = $"total account-cell-{(m.Year < Const.CurrentYear ? "actual" : "budget")}";
 
         if (SelectedERAccountType == ERAccountType.Balances.ToString())
         {
@@ -135,9 +137,9 @@
         {
             return eRAccountType switch
             {
-                ERAccountType.Expenses => m.Year < DataSvc.CurrentYear ? m.ExpensesActualTotal : m.ExpensesBudgetTotal,
-                ERAccountType.Income => m.Year < DataSvc.CurrentYear ? m.IncomeActualTotal : m.IncomeBudgetTotal,
-                ERAccountType.Balances => m.Year < DataSvc.CurrentYear ? m.BalanceActualTotal : m.BalanceBudgetTotal,
+                ERAccountType.Expenses => m.Year < Const.CurrentYear ? m.ExpensesActualTotal : m.ExpensesBudgetTotal,
+                ERAccountType.Income => m.Year < Const.CurrentYear ? m.IncomeActualTotal : m.IncomeBudgetTotal,
+                ERAccountType.Balances => m.Year < Const.CurrentYear ? m.BalanceActualTotal : m.BalanceBudgetTotal,
                 _ => null
             };
         }

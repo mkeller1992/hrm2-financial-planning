@@ -4,6 +4,8 @@
 @inject DropdownService DropdownSvc
 @inject IJSRuntime jsRuntime
 
+@using Projekt2.Constants 
+
 
 @if (IsLoading)
 {
@@ -47,7 +49,7 @@
                     <th class="acc-th first-col">
                         Id / Konto-Name
                     </th>
-                    @if (SelectedYear >= DataSvc.CurrentYear)
+                    @if (SelectedYear >= Const.CurrentYear)
                     {
                         <th class="acc-th">
                             Budget. Aufwand
@@ -72,7 +74,7 @@
                             </th>
                         }
                     }
-                    else if (SelectedYear < DataSvc.CurrentYear)
+                    else if (SelectedYear < Const.CurrentYear)
                     {
                         <th class="acc-th account-cell-actual">
                             Aufwand
@@ -115,7 +117,7 @@
                         Total
                     </th>
 
-                    @if (SelectedYear >= DataSvc.CurrentYear)
+                    @if (SelectedYear >= Const.CurrentYear)
                     {
                         <th class="total account-cell-budget">
                             @(Helpers.FormatDecimal(ERofYear.AccountYearTotals.ExpensesBudgetTotal))
@@ -143,7 +145,7 @@
                             </th>
                         }
                     }
-                    else if (SelectedYear < DataSvc.CurrentYear)
+                    else if (SelectedYear < Const.CurrentYear)
                     {
                         <th class="total account-cell-actual">
                             @(Helpers.FormatDecimal(ERofYear.AccountYearTotals.ExpensesActualTotal))
@@ -195,9 +197,9 @@
 
     protected override async Task OnInitializedAsync()
     {
-        SelectedYear = DataSvc.CurrentYear;
+        SelectedYear = Const.CurrentYear;
         SelectedLevel = 1;
-        RelevantYears = DataSvc.GetRelevantYears(DataSvc.CurrentYear);
+        RelevantYears = DataSvc.GetRelevantYears(Const.CurrentYear);
 
         ReloadAccounts(SelectedStructureType, SelectedYear, SelectedLevel, SelectedAccountRange);
         IsLoading = false;

@@ -1,6 +1,9 @@
 ﻿@inject DataServiceER DataSvc
 @inject HelpersService Helpers
 
+@using Projekt2.Constants;
+
+
 <tr class="account-row-@(LevelInGui)">
     <td class="account-label-@(LevelInGui) text-level-@(LevelInGui) first-col">
         @(AccountYear.AccountId) &nbsp;
@@ -10,7 +13,7 @@
         </a>
     </td>
 
-    @if (AccountYear.Year >= DataSvc.CurrentYear)
+    @if (AccountYear.Year >= Const.CurrentYear)
     {
         <td class="account-cell-budget text-level-@(LevelInGui)">
             @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.ExpensesBudget))
@@ -34,7 +37,7 @@
             </td>
         }
     }
-    else if (AccountYear.Year < DataSvc.CurrentYear)
+    else if (AccountYear.Year < Const.CurrentYear)
     {
         <td class="account-cell-actual text-level-@(LevelInGui)">
             @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.ExpensesActual))

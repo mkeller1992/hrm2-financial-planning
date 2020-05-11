@@ -34,6 +34,7 @@ namespace Projekt2
             services.AddScoped<DataServiceER>();
             services.AddSingleton<HelpersService>();
             services.AddSingleton<DropdownService>();
+            services.AddScoped<ScenarioServiceER>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
