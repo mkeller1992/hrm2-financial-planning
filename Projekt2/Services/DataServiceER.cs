@@ -67,10 +67,6 @@ namespace Projekt2.Services
         /** Yearly ER - Fetch SUB-groups **/
         public async Task<List<AccountYearViewModel>> FetchSubGroupsForYearlyEr(AccountYearViewModel ayear, StructureType selectedType, bool allExistingAccounts)
         {
-            if (ayear.AccountLevel >= 4)
-            {
-                return null;
-            }
 
             // If user is in mixed-structureTypes mode:
             if (selectedType == StructureType.SubjectsThenFunctions || selectedType == StructureType.FunctionsThenSubjects)
@@ -143,11 +139,6 @@ namespace Projekt2.Services
                                                                                            ERAccountType selectedERAccountType,
                                                                                            bool allExistingAccounts)
         {
-            if (accMultiYears.AccountLevel >= 4)
-            {
-                return null;
-            }
-
             string selectedAccountId = accMultiYears.AccountId;
             MultipleYearsViewModel multiYearsModel = null;
 
@@ -320,7 +311,7 @@ namespace Projekt2.Services
         }
 
 
-        /* param financialStatementType == 'FG', 'ER' etc. */
+        /* param accountGroupType == 'FG', 'ER' etc. */
         private IQueryable<AccountYearViewModel> GetQueryForInnerJoinAccountGroupWithAccountYear(string accountGroupType,
                                                                                                  int selectedLevel,
                                                                                                  IQueryable<AccountYearDto> accountYears)
@@ -388,9 +379,19 @@ namespace Projekt2.Services
             // In case the incoming accounts are subject-groups
             else
             {
+                List<string> allowedFirstDigits = new List<string>();
+
+                if (erAccountType == ERAccountType.Expenses || erAccountType == ERAccountType.Balances) 
+                {
+                    allowedFirstDigits.Add(Constants.Constants.FirstDigitOfExpenses);
+                }
+                if (erAccountType == ERAccountType.Income || erAccountType == ERAccountType.Balances)
+                {
+                    allowedFirstDigits.Add(Constants.Constants.FirstDigitOfIncomes);
+                }
+
                 // all "Aufwand"-accounts resp. "Ertrag"-accounts start with the same number => use this fact for filtering:
-                string firstDigit = erAccountType == ERAccountType.Expenses ? Constants.Constants.FirstDigitOfExpenses : Constants.Constants.FirstDigitOfIncomes;
-                accountIds = allAccounts.Where(a => a.AccountId.Substring(0, 1) == firstDigit)
+                accountIds = allAccounts.Where(a => allowedFirstDigits.Contains(a.AccountId.Substring(0, 1)))
                                      .Select(a => a.AccountId)
                                      .OrderBy(a => a)
                                      .Distinct()

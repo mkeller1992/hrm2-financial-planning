@@ -5,7 +5,7 @@
     <td class="account-label-@(LevelInGui) text-level-@(LevelInGui) first-col">
         @(AccountYear.AccountId) &nbsp;
 
-        <a @onclick="OnAccountClicked" class="@(AccountYear.AccountLevel < 4 ? "account-link":"")">
+        <a @onclick="OnAccountClicked" class="@(HasLink() ? "account-link" : "")">
             @(AccountYear.AccountName)
         </a>
     </td>
@@ -64,8 +64,8 @@
 {
     foreach (var a in AccountYear.ChildAccounts)
     {
-    <AccountStatic AccountYear="a"
-                   LevelInGui="(LevelInGui + 1)" />
+        <AccountStatic AccountYear="a"
+                       LevelInGui="(LevelInGui + 1)" />
     }
 }
 
@@ -86,25 +86,51 @@
 
     public bool AreChildrenExpanded { get; set; }
 
+    public bool CouldNotFetchChildren { get; set; }
+
+
+    /* Determines whether the account name represents a hyperlink or not */
+    private bool HasLink()
+    {
+        if (CouldNotFetchChildren)
+        {
+            return false;
+        }
+
+        if (SelectedStructureType == StructureType.Functions.ToString() || SelectedStructureType == StructureType.Subjects.ToString())
+        {
+            return AccountYear.AccountLevel < 4;
+        }
+        return LevelInGui < 5;
+    }
+
 
     async void OnAccountClicked()
     {
-        if (AccountYear.AccountLevel == 4)
+        if (HasLink())
         {
-            return;
-        }
-        AreChildrenExpanded = !AreChildrenExpanded;
+            AreChildrenExpanded = !AreChildrenExpanded;
 
-        if (AreChildrenExpanded &&
-            AccountYear.ChildAccounts == null &&
-            Enum.TryParse(SelectedStructureType, out StructureType structureType) &&
-            Enum.TryParse(SelectedAccountRange, out AccountRange selectRange))
-        {
-            AccountYear.ChildAccounts = await DataSvc.FetchSubGroupsForYearlyEr(AccountYear,
-                                                                                      structureType,
-                                                                                      selectRange == AccountRange.AllAccounts);
+            if (AreChildrenExpanded &&
+                AccountYear.ChildAccounts == null &&
+                Enum.TryParse(SelectedStructureType, out StructureType structureType) &&
+                Enum.TryParse(SelectedAccountRange, out AccountRange selectRange))
+            {
+                AccountYear.ChildAccounts = await DataSvc.FetchSubGroupsForYearlyEr(AccountYear,
+                                                                                          structureType,
+                                                                                          selectRange == AccountRange.AllAccounts);
+
+                if (AccountYear.ChildAccounts == null || AccountYear.ChildAccounts.Count == 0)
+                {
+                    // Revers 'expand'-command
+                    AreChildrenExpanded = false;
+                    // Remove link on Account
+                    CouldNotFetchChildren = true;
+                }
+            }
+            StateHasChanged();
         }
-        StateHasChanged();
+
     }
 
 

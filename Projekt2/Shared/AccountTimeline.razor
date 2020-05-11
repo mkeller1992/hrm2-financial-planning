@@ -6,7 +6,7 @@
     <td class="account-label-@(LevelInGui) text-level-@(LevelInGui) first-col">
         @(AccountMultipleYears.AccountId) &nbsp;
 
-        <a @onclick="OnAccountClicked" class="@(AccountMultipleYears.AccountLevel < 4 ? "account-link":"")">
+        <a @onclick="OnAccountClicked" class="@(HasLink() ? "account-link":"")">
             @(AccountMultipleYears.AccountName)
         </a>
     </td>
@@ -69,6 +69,25 @@
     string SelectedAccountRange { get; set; }
 
     public bool AreChildrenExpanded { get; set; }
+
+    public bool CouldNotFetchChildren { get; set; }
+
+
+
+    /* Determines whether the account name represents a hyperlink or not */
+    private bool HasLink()
+    {
+        if (CouldNotFetchChildren)
+        {
+            return false;
+        }
+
+        if (SelectedStructureType == StructureType.Functions.ToString() || SelectedStructureType == StructureType.Subjects.ToString())
+        {
+            return AccountMultipleYears.AccountLevel < 4;
+        }
+        return LevelInGui < 5;
+    }
 
 
     decimal? GetAccountValue(string type, AccountYearViewModel m)
@@ -135,29 +154,28 @@
 
     async void OnAccountClicked()
     {
-        if (AccountMultipleYears.AccountLevel >= 4)
+        if (HasLink())
         {
-            return;
-        }
-        AreChildrenExpanded = !AreChildrenExpanded;
+            AreChildrenExpanded = !AreChildrenExpanded;
 
-        if (AreChildrenExpanded &&
-            AccountMultipleYears.Children == null &&
-            Enum.TryParse(SelectedStructureType, out StructureType selectStructureT) &&
-            Enum.TryParse(SelectedERAccountType, out ERAccountType selectErAccT) &&
-            Enum.TryParse(SelectedAccountRange, out AccountRange selectRange))
-        {
-            AccountMultipleYears.Children = await DataSvc.FetchSubGroupsForTimelineEr(AccountMultipleYears, selectStructureT, selectErAccT, selectRange == AccountRange.AllAccounts);
-
-            if(AccountMultipleYears.Children == null || AccountMultipleYears.Children.Count == 0)
+            if (AreChildrenExpanded &&
+                AccountMultipleYears.Children == null &&
+                Enum.TryParse(SelectedStructureType, out StructureType selectStructureT) &&
+                Enum.TryParse(SelectedERAccountType, out ERAccountType selectErAccT) &&
+                Enum.TryParse(SelectedAccountRange, out AccountRange selectRange))
             {
-                // Revers 'expand'-command
-                AreChildrenExpanded = false;
-                // Remove link on Account
-                AccountMultipleYears.AccountLevel = 99;
+                AccountMultipleYears.Children = await DataSvc.FetchSubGroupsForTimelineEr(AccountMultipleYears, selectStructureT, selectErAccT, selectRange == AccountRange.AllAccounts);
+
+                if (AccountMultipleYears.Children == null || AccountMultipleYears.Children.Count == 0)
+                {
+                    // Revers 'expand'-command
+                    AreChildrenExpanded = false;
+                    // Remove link on Account
+                    CouldNotFetchChildren = true;
+                }
             }
+            StateHasChanged();
         }
-        StateHasChanged();
     }
 
 

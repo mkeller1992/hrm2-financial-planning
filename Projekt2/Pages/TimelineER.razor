@@ -166,11 +166,8 @@
             SetDisabledStructureTypes(inputVal);
             SelectedERAccountType = inputVal;
 
-            // In cases user selects "Balances", fetching new api-data is only needed if ERDataForMultipleYears == null
-            if (SelectedERAccountType != ERAccountType.Balances.ToString() || ERDataForMultipleYears == null)
-            {
-                ReloadAccounts(SelectedStructureType, SelectedYears, SelectedERAccountType, SelectedLevel, SelectedAccountRange);
-            }
+            ReloadAccounts(SelectedStructureType, SelectedYears, SelectedERAccountType, SelectedLevel, SelectedAccountRange);
+
             StateHasChanged();
         }
     }
