@@ -84,9 +84,6 @@
     [CascadingParameter(Name = "SelectedStructureType")]
     string SelectedStructureType { get; set; }
 
-    [CascadingParameter(Name = "SelectedAccountRange")]
-    string SelectedAccountRange { get; set; }
-
     public bool AreChildrenExpanded { get; set; }
 
     public bool CouldNotFetchChildren { get; set; }
@@ -116,12 +113,10 @@
 
             if (AreChildrenExpanded &&
                 AccountYear.ChildAccounts == null &&
-                Enum.TryParse(SelectedStructureType, out StructureType structureType) &&
-                Enum.TryParse(SelectedAccountRange, out AccountRange selectRange))
+                Enum.TryParse(SelectedStructureType, out StructureType structureType))
             {
                 AccountYear.ChildAccounts = await DataSvc.FetchSubGroupsForYearlyEr(AccountYear,
-                                                                                          structureType,
-                                                                                          selectRange == AccountRange.AllAccounts);
+                                                                                          structureType);
 
                 if (AccountYear.ChildAccounts == null || AccountYear.ChildAccounts.Count == 0)
                 {

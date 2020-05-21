@@ -1,4 +1,5 @@
 ﻿@inject DataServiceER DataSvc
+@inject ScenarioServiceER ScenarioSvc
 @inject HelpersService Helpers
 
 @using Projekt2.Constants
@@ -67,8 +68,11 @@
     [CascadingParameter(Name = "SelectedERAccountType")]
     string SelectedERAccountType { get; set; }
 
-    [CascadingParameter(Name = "SelectedAccountRange")]
-    string SelectedAccountRange { get; set; }
+    [CascadingParameter(Name = "SelectedScenarioType")]
+    string SelectedScenarioType { get; set; }
+
+    [CascadingParameter(Name = "CurrentScenario")]
+    Scenario CurrentScenario { get; set; }
 
     public bool AreChildrenExpanded { get; set; }
 
@@ -164,9 +168,17 @@
                 AccountMultipleYears.Children == null &&
                 Enum.TryParse(SelectedStructureType, out StructureType selectStructureT) &&
                 Enum.TryParse(SelectedERAccountType, out ERAccountType selectErAccT) &&
-                Enum.TryParse(SelectedAccountRange, out AccountRange selectRange))
+                Enum.TryParse(SelectedScenarioType, out ScenarioType selectScenarioT))
             {
-                AccountMultipleYears.Children = await DataSvc.FetchSubGroupsForTimelineEr(AccountMultipleYears, selectStructureT, selectErAccT, selectRange == AccountRange.AllAccounts);
+
+                if (selectScenarioT == ScenarioType.InputData)
+                {
+                    AccountMultipleYears.Children = await DataSvc.FetchSubGroupsForTimelineEr(AccountMultipleYears, selectStructureT, selectErAccT);
+                }
+                else if (selectScenarioT == ScenarioType.Scenario && CurrentScenario != null)
+                {
+                    AccountMultipleYears.Children = ScenarioSvc.FetchSubGroupsForTimelineEr(CurrentScenario, AccountMultipleYears, selectStructureT, selectErAccT);
+                }
 
                 if (AccountMultipleYears.Children == null || AccountMultipleYears.Children.Count == 0)
                 {

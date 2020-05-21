@@ -5,8 +5,8 @@ using System.Threading.Tasks;
 
 namespace Projekt2.Services.Enums
 {
-    public enum AccountRange
+    public enum ScenarioType
     {
-        UsedAccounts, AllAccounts
+        InputData, Scenario
     }
 }

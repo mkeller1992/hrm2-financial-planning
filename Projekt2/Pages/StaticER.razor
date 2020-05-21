@@ -30,11 +30,6 @@
                  Items="DropdownSvc.Levels"
                  SelectionChanged="OnSelectLevel" />
 
-    <DropdownStr Label="Umfang"
-                 SelectedValue="@SelectedAccountRange"
-                 Items="DropdownSvc.AccountRanges"
-                 SelectionChanged="OnSelectAccountRange" />
-
     <hr />
 
 }
@@ -52,13 +47,13 @@
                     @if (SelectedYear >= Const.CurrentYear)
                     {
                         <th class="acc-th">
-                            Budget. Aufwand
+                            Plan Aufwand
                         </th>
                         <th class="acc-th">
                             Diff.A.
                         </th>
                         <th class="acc-th">
-                            Budget. Ertrag
+                            Plan Ertrag
                         </th>
                         <th class="acc-th">
                             Diff.B.
@@ -67,7 +62,7 @@
                              SelectedStructureType == StructureType.FunctionsThenSubjects.ToString())
                         {
                             <th class="acc-th">
-                                Budget. Saldo
+                                Plan Saldo
                             </th>
                             <th class="acc-th">
                                 Diff.S.
@@ -106,10 +101,8 @@
                 @foreach (AccountYearViewModel acc in ERofYear.Accounts)
                 {
                     <CascadingValue Value="@SelectedStructureType" Name="SelectedStructureType">
-                        <CascadingValue Value="@SelectedAccountRange" Name="SelectedAccountRange">
                             <AccountStatic AccountYear="acc"
                                            LevelInGui="1"/>
-                        </CascadingValue>
                     </CascadingValue>
                 }
                 <tr>
@@ -186,7 +179,6 @@
     bool IsLoading = true;
 
     string SelectedStructureType = StructureType.Functions.ToString();
-    string SelectedAccountRange = AccountRange.UsedAccounts.ToString();
 
     int SelectedYear;
     int SelectedLevel;
@@ -199,9 +191,9 @@
     {
         SelectedYear = Const.CurrentYear;
         SelectedLevel = 1;
-        RelevantYears = DataSvc.GetRelevantYears(Const.CurrentYear);
+        RelevantYears = DataSvc.GetRelevantYears(Const.CurrentYear - 1, ScenarioType.InputData);
 
-        ReloadAccounts(SelectedStructureType, SelectedYear, SelectedLevel, SelectedAccountRange);
+        ReloadAccounts(SelectedStructureType, SelectedYear, SelectedLevel);
         IsLoading = false;
     }
 
@@ -213,7 +205,7 @@
         if (inputVal != SelectedYear)
         {
             SelectedYear = inputVal;
-            ReloadAccounts(SelectedStructureType, SelectedYear, SelectedLevel, SelectedAccountRange);
+            ReloadAccounts(SelectedStructureType, SelectedYear, SelectedLevel);
         }
     }
 
@@ -224,7 +216,7 @@
         if (inputVal != SelectedLevel)
         {
             SelectedLevel = inputVal;
-            ReloadAccounts(SelectedStructureType, SelectedYear, SelectedLevel, SelectedAccountRange);
+            ReloadAccounts(SelectedStructureType, SelectedYear, SelectedLevel);
         }
     }
 
@@ -234,35 +226,30 @@
         if (inputVal != SelectedStructureType)
         {
             SelectedStructureType = inputVal;
-            ReloadAccounts(SelectedStructureType, SelectedYear, SelectedLevel, SelectedAccountRange);
+            ReloadAccounts(SelectedStructureType, SelectedYear, SelectedLevel);
         }
     }
 
     async void OnSelectAccountRange(string inputVal)
     {
         await jsRuntime.InvokeAsync<string>("console.error", inputVal);
-        if (inputVal != SelectedAccountRange)
-        {
-            SelectedAccountRange = inputVal;
-            ReloadAccounts(SelectedStructureType, SelectedYear, SelectedLevel, SelectedAccountRange);
-        }
+        ReloadAccounts(SelectedStructureType, SelectedYear, SelectedLevel);
+
     }
 
-    async void ReloadAccounts(string structureType, int year, int level, string range)
+    async void ReloadAccounts(string structureType, int year, int level)
     {
         await jsRuntime.InvokeAsync<string>("console.error", $"StructureType: {structureType}, Year: {year}, Level: {level}");
 
         if (year > 2000 &&
             level > 0 &&
-            Enum.TryParse(structureType, out StructureType structureT) &&
-            Enum.TryParse(range, out AccountRange accountRange))
+            Enum.TryParse(structureType, out StructureType structureT))
         {
             this.IsLoading = true;
             StateHasChanged();
             ERofYear = await DataSvc.FetchMainGroupsForYearlyER(structureT,
                                                                 SelectedYear,
-                                                                SelectedLevel,
-                                                                accountRange == AccountRange.AllAccounts);
+                                                                SelectedLevel);
             this.IsLoading = false;
             StateHasChanged();
         }

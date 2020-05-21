@@ -1,5 +1,6 @@
 ﻿using Projekt2.DbModels;
 using Projekt2.Models.Interfaces;
+using Projekt2.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,50 +13,53 @@ namespace Projekt2.Models
         protected readonly IAccountParams _accountParams;
         protected readonly IModificationOperation _modificationOperation;
 
-        protected readonly List<AccountYear> _relevantAccounts; // Includes Accounts of Base-Year + later years
-
-
         public ModificationUnit(IAccountParams accountParams, IModificationOperation modificationOperation)
         {
             _accountParams = accountParams;
             _modificationOperation = modificationOperation;
-            _relevantAccounts = new List<AccountYear>();
         }
 
-        public void AddRelevantAccounts(List<AccountYear> allAccounts)
+        public void ExecuteChanges(int selectedYear, int financialYear, List<AccountYearDto> allAccounts)
         {
-            foreach (var acc in allAccounts)
-            {
-                if (_accountParams.SubjectIds.Contains(acc.SubjectId) &&
-                   acc.FunctionId == _accountParams.IdOfParentFunctionGroup &&
-                   (acc.Year == _accountParams.FinancialYear || _accountParams.BudgetYears.Contains(acc.Year)))
-                {
-                    _relevantAccounts.Add(acc);
-                }
-            }
-        }
+            List<AccountYearDto> accountsPreviousYear = GetRelevantAccounts(allAccounts, (selectedYear - 1));
+            List<AccountYearDto> accountsSelectedYear = GetRelevantAccounts(allAccounts, selectedYear);
 
-        public void ExecuteChanges(int year)
-        {
-            if (_relevantAccounts == null || _relevantAccounts.Count == 0)
+            if (accountsPreviousYear.Count == 0 || accountsSelectedYear.Count == 0)
             {
-                throw new Exception("Relevant Accounts not set!");
+                return;
             }
-
-            List<AccountYear> accountsPreviousYear = _relevantAccounts.Where(a => a.Year == (year - 1)).ToList();
 
             foreach (var baseAcc in accountsPreviousYear)
             {
-                foreach (var acc in _relevantAccounts)
+                foreach (var acc in accountsSelectedYear)
                 {
                     if (baseAcc.SubjectId == acc.SubjectId &&
-                        baseAcc.FunctionId == acc.FunctionId &&
-                        baseAcc.Year == year)
+                        baseAcc.IdOfParentFunctionGroup == acc.IdOfParentFunctionGroup)
                     {
-                        _modificationOperation.ApplyModification(_accountParams.FinancialYear, baseAcc, acc);
+                        _modificationOperation.ApplyModification(financialYear, baseAcc, acc);
                     }
                 }
             }
+        }
+
+        private List<AccountYearDto> GetRelevantAccounts(List<AccountYearDto> allAccounts, int year)
+        {
+            List<AccountYearDto> relevantAccounts = new List<AccountYearDto>();
+
+            foreach (var acc in allAccounts)
+            {
+                // if subjectId or functionGroupId == null, subjectId resp. functionGroupId is not relevant for the selection
+
+                if ((_accountParams.SubjectId == null ||
+                    _accountParams.SubjectId == acc.SubjectId.Substring(0, _accountParams.SubjectLevel)) &&
+                   (_accountParams.IdOfParentFunctionGroup == null ||
+                   _accountParams.IdOfParentFunctionGroup == acc.IdOfParentFunctionGroup.Substring(0, _accountParams.ParentFunctionGroupLevel)) &&
+                    acc.Year == year)
+                {
+                    relevantAccounts.Add(acc);
+                }
+            }
+            return relevantAccounts;
         }
 
 

@@ -1,5 +1,6 @@
 ﻿using Projekt2.DbModels;
 using Projekt2.Models.Interfaces;
+using Projekt2.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,12 +10,22 @@ namespace Projekt2.Models
 {
     public class IncomesChangePercent : IModificationOperation
     {
+        private decimal _changeInPercent;
 
-        public void ApplyModification(int financialYear, AccountYear accountPreviousYear, AccountYear accountSelectedYear)
+        public IncomesChangePercent(decimal changeInPercent) 
         {
+            _changeInPercent = changeInPercent;
+        }
 
-            // TODO: Implement !!!
+        public void ApplyModification(int financialYear, AccountYearDto accountPreviousYear, AccountYearDto accountSelectedYear)
+        {
+            decimal? baseValue = accountPreviousYear.Year == financialYear ?
+                                 accountPreviousYear.IncomeActual : accountPreviousYear.IncomeBudget;
 
+            if (baseValue == null || baseValue == 0) { return; }
+
+            decimal increment = decimal.Multiply(decimal.Divide(baseValue.Value, 100), _changeInPercent);
+            accountSelectedYear.IncomeBudget += increment;
         }
     }
 }

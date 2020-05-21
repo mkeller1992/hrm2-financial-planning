@@ -26,10 +26,16 @@ namespace Projekt2.Services
                     {4, "4"}
                 };
 
-        public readonly Dictionary<string, string> AccountRanges = new Dictionary<string, string>()
+        public readonly Dictionary<string, string> ScenarioAccountTypes = new Dictionary<string, string>()
                 {
-                    {AccountRange.UsedAccounts.ToString(), "Tatsächlich verwendete Konten"},
-                    {AccountRange.AllAccounts.ToString(), "Alle existierenden Konten"},
+                    { ERAccountType.Expenses.ToString(), "Aufwände" },
+                    { ERAccountType.Income.ToString(), "Erträge" }
+                };
+
+        public readonly Dictionary<string, string> ScenarioTypes = new Dictionary<string, string>()
+                {
+                    {ScenarioType.InputData.ToString(), "Input Konti"},
+                    {ScenarioType.Scenario.ToString(), "Szenario Konti"},
                 };
 
 

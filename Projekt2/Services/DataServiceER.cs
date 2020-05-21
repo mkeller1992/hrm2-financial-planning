@@ -25,13 +25,13 @@ namespace Projekt2.Services
         }
 
 
-        public List<int> GetRelevantYears(int currentYear)
+        public List<int> GetRelevantYears(int financialYear, ScenarioType scenarioType)
         {
             var result = new List<int>();
-            int count = -2;
-            while (count < 5)
+            int count = scenarioType == ScenarioType.InputData ? -1 : 0;
+            while (count < 6)
             {
-                result.Add(currentYear + count);
+                result.Add(financialYear + count);
                 count++;
             }
             return result;
@@ -63,12 +63,12 @@ namespace Projekt2.Services
 
 
         /** Yearly ER - Fetch main-groups **/
-        public async Task<YearViewModel> FetchMainGroupsForYearlyER(StructureType selectedType, int selectedYear, int selectedLevel, bool allExistingAccounts)
+        public async Task<YearViewModel> FetchMainGroupsForYearlyER(StructureType selectedType, int selectedYear, int selectedLevel)
         {
             int previousYear = selectedYear - 1;
             var years = new List<int> { previousYear, selectedYear };
 
-            var query = GetQueryForErAccounts(selectedType, years, selectedLevel, allExistingAccounts);
+            var query = GetQueryForErAccounts(selectedType, years, selectedLevel);
 
             List<AccountYearViewModel> allAccounts = await query.ToListAsync();
             List<AccountYearViewModel> accountsForPreviousYear = allAccounts.Where(a => a.Year == previousYear).OrderBy(a => a.AccountId).ToList();
@@ -88,7 +88,7 @@ namespace Projekt2.Services
 
 
         /** Yearly ER - Fetch SUB-groups **/
-        public async Task<List<AccountYearViewModel>> FetchSubGroupsForYearlyEr(AccountYearViewModel ayear, StructureType selectedType, bool allExistingAccounts)
+        public async Task<List<AccountYearViewModel>> FetchSubGroupsForYearlyEr(AccountYearViewModel ayear, StructureType selectedType)
         {
 
             // If user is in mixed-structureTypes mode:
@@ -109,7 +109,7 @@ namespace Projekt2.Services
             }
 
             // If user is in subjects-mode or in functions-mode:
-            YearViewModel m = await FetchMainGroupsForYearlyER(selectedType, ayear.Year, (ayear.AccountLevel) + 1, allExistingAccounts);
+            YearViewModel m = await FetchMainGroupsForYearlyER(selectedType, ayear.Year, (ayear.AccountLevel) + 1);
             return m.Accounts.Where(a => a.AccountId.Substring(0, ayear.AccountLevel) == ayear.AccountId).ToList();
         }
 
@@ -144,9 +144,12 @@ namespace Projekt2.Services
 
 
         /** Timeline ER - Fetch main-groups **/
-        public async Task<MultipleYearsViewModel> FetchMainGroupsForTimelineEr(StructureType selectedType, ERAccountType erAccountType, List<int> selectedYears, int selectedLevel, bool allExistingAccounts)
+        public async Task<MultipleYearsViewModel> FetchMainGroupsForTimelineEr(StructureType selectedType,
+                                                                               ERAccountType erAccountType,
+                                                                               List<int> selectedYears,
+                                                                               int selectedLevel)
         {
-            var query = GetQueryForErAccounts(selectedType, selectedYears, selectedLevel, allExistingAccounts);
+            var query = GetQueryForErAccounts(selectedType, selectedYears, selectedLevel);
 
             // accounts contains all accounts as a flat list:
             List<AccountYearViewModel> allAccounts = await query.ToListAsync();
@@ -159,8 +162,7 @@ namespace Projekt2.Services
         /** Timeline ER - Fetch SUB-groups **/
         public async Task<List<AccountMultipleYearsViewModel>> FetchSubGroupsForTimelineEr(AccountMultipleYearsViewModel accMultiYears, 
                                                                                            StructureType selectedType,
-                                                                                           ERAccountType selectedERAccountType,
-                                                                                           bool allExistingAccounts)
+                                                                                           ERAccountType selectedERAccountType)
         {
             string selectedAccountId = accMultiYears.AccountId;
             MultipleYearsViewModel multiYearsModel = null;
@@ -189,7 +191,7 @@ namespace Projekt2.Services
             }
             else if (selectedType == StructureType.Functions || selectedType == StructureType.Subjects)
             {
-                var query = GetQueryForErAccounts(selectedType, accMultiYears.SelectedYears, (accMultiYears.AccountLevel + 1), allExistingAccounts);
+                var query = GetQueryForErAccounts(selectedType, accMultiYears.SelectedYears, (accMultiYears.AccountLevel + 1));
 
                 // accounts contains all accounts as a flat list:
                 // Pick all accounts, whose id starts with the clicked account's id
@@ -206,8 +208,7 @@ namespace Projekt2.Services
 
         private IQueryable<AccountYearViewModel> GetQueryForErAccounts(StructureType selectedType,
                                                                                       List<int> selectedYears,
-                                                                                      int selectedLevel,
-                                                                                      bool allExistingAccounts)
+                                                                                      int selectedLevel)
         {
             bool isSelectedAccountFunction = selectedType == StructureType.Functions || selectedType == StructureType.FunctionsThenSubjects;
             bool isSelectedAccountSubject = selectedType == StructureType.Subjects || selectedType == StructureType.SubjectsThenFunctions;
@@ -222,7 +223,7 @@ namespace Projekt2.Services
                                             })
                                             .Select(o => new AccountYearDto
                                             {
-                                                Id = o.Key.FunctionId ?? o.Key.SubjectId, // corresponds to property of groupBy condition
+                                                SubjectId = o.Key.FunctionId ?? o.Key.SubjectId, // corresponds to property of groupBy condition
                                                 Year = o.Key.Year,
                                                 ExpensesBudget = o.Sum(x => x.ExpensesBudget),
                                                 ExpensesActual = o.Sum(x => x.ExpensesEffective),
@@ -232,38 +233,8 @@ namespace Projekt2.Services
 
             var relevantType = selectedType == StructureType.Functions || selectedType == StructureType.FunctionsThenSubjects ? "FG" : "ER";
 
-            // In case user wants to see all accounts, including the unused:
-            if (allExistingAccounts)
-            {
-                IQueryable<AccountGroup> accountGroups = _context.AccountGroup.Where(a => a.Type == relevantType &&
-                                                                         a.Level == selectedLevel);
-
-                // Do LEFT JOIN
-                return from agroup in accountGroups
-                       join ayear in accountYears on agroup.Id equals ayear.Id into gj
-                       from subAYear in gj.DefaultIfEmpty()
-                       select new AccountYearViewModel
-                       {
-                           Type = agroup.Type,
-                           AccountId = agroup.Id,
-                           AccountName = agroup.Name,
-                           AccountLevel = agroup.Level,
-                           ParentId = agroup.ParentId,
-                           Year = subAYear.Year,
-                           ExpensesBudget = subAYear.ExpensesBudget,
-                           ExpensesActual = subAYear.ExpensesActual,
-                           IncomeBudget = subAYear.IncomeBudget,
-                           IncomeActual = subAYear.IncomeActual,
-                           BalanceActual = (subAYear.IncomeActual ?? 0) - (subAYear.ExpensesActual ?? 0),
-                           BalanceBudget = (subAYear.IncomeBudget ?? 0) - (subAYear.ExpensesBudget ?? 0)
-                       };
-            }
-            // In case user wants to see just the used accounts:
-            else
-            {
-                // Inner Join
-                return GetQueryForInnerJoinAccountGroupWithAccountYear(relevantType, selectedLevel, accountYears);
-            }
+            // Inner Join
+            return GetQueryForInnerJoinAccountGroupWithAccountYear(relevantType, selectedLevel, accountYears);
         }
 
 
@@ -321,7 +292,7 @@ namespace Projekt2.Services
                                             })
                                             .Select(o => new AccountYearDto
                                             {
-                                                Id = isFunctionGroupSuperordinated ? o.Key.SubjectId : o.Key.FunctionId, // corresponds to property of groupBy condition
+                                                SubjectId = isFunctionGroupSuperordinated ? o.Key.SubjectId : o.Key.FunctionId, // corresponds to property of groupBy condition
                                                 Year = o.Key.Year, // corresponds to property of groupBy condition
                                                 ExpensesBudget = o.Sum(x => x.ExpensesBudget),
                                                 ExpensesActual = o.Sum(x => x.ExpensesEffective),
@@ -343,7 +314,7 @@ namespace Projekt2.Services
                                                                                  a.Level == selectedLevel);
 
             return accountYears.Join(accountGroups,
-                             aYear => aYear.Id,
+                             aYear => aYear.SubjectId,
                              aGroup => aGroup.Id, (aYear, aGroup)
                              => new AccountYearViewModel
                              {

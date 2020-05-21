@@ -1,5 +1,6 @@
 ﻿@page "/timeline-er"
 @inject DataServiceER DataSvc
+@inject ScenarioServiceER ScenarioSvc
 @inject HelpersService Helpers
 @inject DropdownService DropdownSvc
 @inject IJSRuntime jsRuntime
@@ -32,10 +33,17 @@
                  Items="DropdownSvc.Levels"
                  SelectionChanged="OnSelectLevel" />
 
-    <DropdownStr Label="Umfang"
-                 SelectedValue="@SelectedAccountRange"
-                 Items="DropdownSvc.AccountRanges"
-                 SelectionChanged="OnSelectAccountRange" />
+
+    @if (IsInScenarioMode)
+    {
+        <DropdownStr Label="Input-Daten vs. Szenario"
+                     SelectedValue="@SelectedScenarioType"
+                     Items="DropdownSvc.ScenarioTypes"
+                     SelectionChanged="OnSelectScenarioType" />
+
+
+        <button style="display: inline-block" @onclick="() => CreateNewScenario.InvokeAsync(null)">Create new scenario</button>
+    }
 
     <hr />
 }
@@ -54,7 +62,7 @@
                         @foreach (int y in ERDataForMultipleYears.SelectedYears)
                         {
                             <th class="acc-th">
-                                @(y < Const.CurrentYear ? "Rg Jahr" :"Budget" ) @y
+                                @(y < Const.CurrentYear ? "Rg Jahr" :"Plan" ) @y
                             </th>
                         }
                     </tr>
@@ -65,7 +73,7 @@
                     {
                         <CascadingValue Value="@SelectedStructureType" Name="SelectedStructureType">
                             <CascadingValue Value="@SelectedERAccountType" Name="SelectedERAccountType">
-                                <CascadingValue Value="@SelectedAccountRange" Name="SelectedAccountRange">
+                                <CascadingValue Value="@SelectedScenarioType" Name="SelectedScenarioType">
                                     <AccountTimeline AccountMultipleYears="acc"
                                                      LevelInGui="1" />
                                 </CascadingValue>
@@ -93,12 +101,19 @@
 @code {
 
     bool IsLoading = true;
+    bool IsInScenarioMode = false;
+
+    [CascadingParameter(Name = "CurrentScenario")]
+    Scenario CurrentScenario { get; set; }
+
+    [Parameter]
+    public EventCallback CreateNewScenario { get; set; }
 
     List<int> SelectedYears { get; set; }
 
     string SelectedStructureType = StructureType.Functions.ToString();
     string SelectedERAccountType = ERAccountType.Expenses.ToString();
-    string SelectedAccountRange = AccountRange.UsedAccounts.ToString();
+    string SelectedScenarioType = null;
     int SelectedLevel;
 
     List<string> DisabledStructures = new List<string>();
@@ -109,12 +124,20 @@
 
     protected override async Task OnInitializedAsync()
     {
+        SelectedScenarioType = ScenarioType.InputData.ToString();
+
+        if (CurrentScenario != null)
+        {
+            SelectedScenarioType = ScenarioType.Scenario.ToString();
+            IsInScenarioMode = true;
+        }
+
         this.SelectedLevel = 1;
         SetDisabledStructureTypes(SelectedERAccountType);
         SetDisabledERAccountTypes(SelectedStructureType);
 
-        this.SelectedYears = DataSvc.GetRelevantYears(Const.CurrentYear);
-        ReloadAccounts(SelectedStructureType, SelectedYears, SelectedERAccountType, SelectedLevel, SelectedAccountRange);
+        await ReloadAccounts();
+
         IsLoading = false;
     }
 
@@ -154,7 +177,7 @@
         {
             SetDisabledERAccountTypes(inputVal);
             SelectedStructureType = inputVal;
-            ReloadAccounts(SelectedStructureType, SelectedYears, SelectedERAccountType, SelectedLevel, SelectedAccountRange);
+            await ReloadAccounts();
             StateHasChanged(); // Triggers updating of Dropdown with ER-Account-Types
         }
     }
@@ -168,8 +191,7 @@
             SetDisabledStructureTypes(inputVal);
             SelectedERAccountType = inputVal;
 
-            ReloadAccounts(SelectedStructureType, SelectedYears, SelectedERAccountType, SelectedLevel, SelectedAccountRange);
-
+            await ReloadAccounts();
             StateHasChanged();
         }
     }
@@ -182,39 +204,58 @@
         if (inputVal != SelectedLevel)
         {
             SelectedLevel = inputVal;
-            ReloadAccounts(SelectedStructureType, SelectedYears, SelectedERAccountType, SelectedLevel, SelectedAccountRange);
+            await ReloadAccounts();
+            StateHasChanged();
         }
     }
 
 
-    async void OnSelectAccountRange(string inputVal)
+    async void OnSelectScenarioType(string inputVal)
     {
         await jsRuntime.InvokeAsync<string>("console.error", inputVal);
-        if (inputVal != SelectedAccountRange)
+
+        if (inputVal != SelectedScenarioType)
         {
-            SelectedAccountRange = inputVal;
-            ReloadAccounts(SelectedStructureType, SelectedYears, SelectedERAccountType, SelectedLevel, SelectedAccountRange);
+            SelectedScenarioType = inputVal;
+            await ReloadAccounts();
         }
     }
 
 
-    private async void ReloadAccounts(string structureT, List<int> selectedYears, string accType, int level, string accRange)
+    private async Task ReloadAccounts()
     {
-        await jsRuntime.InvokeAsync<string>
-            ("console.error", $"StructureType: {structureT} ER-Account-Type: {accType}, Level: {level}, Range {accRange}");
+        var structureT = SelectedStructureType;
+        var accType = SelectedERAccountType;
 
-        if (level > 0 &&
+
+        await jsRuntime.InvokeAsync<string>
+        ("console.error", $"StructureType: {structureT} ER-Account-Type: {accType}, Level: {SelectedLevel}");
+
+        if (SelectedLevel > 0 &&
             Enum.TryParse(structureT, out StructureType structureType) &&
-            Enum.TryParse(accType, out ERAccountType erAccountType) &&
-            Enum.TryParse(accRange, out AccountRange range))
+            Enum.TryParse(accType, out ERAccountType erAccountType))
         {
             this.IsLoading = true;
             StateHasChanged();
-            ERDataForMultipleYears = await DataSvc.FetchMainGroupsForTimelineEr(structureType,
+
+            if (SelectedScenarioType == ScenarioType.InputData.ToString())
+            {
+                this.SelectedYears = DataSvc.GetRelevantYears(Const.CurrentYear - 1, ScenarioType.InputData);
+                ERDataForMultipleYears = await DataSvc.FetchMainGroupsForTimelineEr(structureType,
                                                                                  erAccountType,
-                                                                                 selectedYears,
-                                                                                 SelectedLevel,
-                                                                                 range == AccountRange.AllAccounts);
+                                                                                 SelectedYears,
+                                                                                 SelectedLevel);
+            }
+            else if (SelectedScenarioType == ScenarioType.Scenario.ToString() && CurrentScenario != null)
+            {
+                this.SelectedYears = DataSvc.GetRelevantYears(CurrentScenario.FinancialYear, ScenarioType.Scenario);
+                ERDataForMultipleYears = ScenarioSvc.FetchMainGroupsForTimelineEr(CurrentScenario,
+                                                                              structureType,
+                                                                              erAccountType,
+                                                                              SelectedYears,
+                                                                              SelectedLevel);
+            }
+
             this.IsLoading = false;
             StateHasChanged();
         }

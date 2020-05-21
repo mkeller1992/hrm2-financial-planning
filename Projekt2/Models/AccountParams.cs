@@ -8,26 +8,15 @@ namespace Projekt2.Models
 {
     public class AccountParams : IAccountParams
     {
-        public List<string> SubjectIds { get; set; }
+        /* Changes can be defined for subjects of different level and for parent-functionGroups of different levels */
+
+        public string SubjectId { get; set; }
+
+        public int SubjectLevel => SubjectId.Length;
+
         public string IdOfParentFunctionGroup { get; set; }
 
-        private int _financialYear;
-        public int FinancialYear
-        {
-            get
-            {
-                return _financialYear;
-            }
-            set
-            {
-                if (value != 0)
-                {
-                    _financialYear = value;
-                    BudgetYears = new List<int> { (value + 1), (value + 2), (value + 3), (value + 5), (value + 6), };
-                }
-            }
-        }
+        public int ParentFunctionGroupLevel => IdOfParentFunctionGroup.Length;
 
-        public List<int> BudgetYears { get; private set; }
     }
 }

@@ -8,13 +8,13 @@ namespace Projekt2.Models.Interfaces
 {
     public interface IAccountParams
     {
-        public List<string> SubjectIds { get; set; }
+        public string SubjectId { get; set; }
+
+        public int SubjectLevel { get; }
 
         public string IdOfParentFunctionGroup { get; set; }
 
-        public int FinancialYear { get; set; }
-
-        public List<int> BudgetYears { get; }
+        public int ParentFunctionGroupLevel { get; }
 
     }
 }
