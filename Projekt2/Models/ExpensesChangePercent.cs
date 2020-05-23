@@ -17,8 +17,8 @@ namespace Projekt2.Models
         public ExpensesChangePercent(decimal changeInPercent)
         {
             _changeInPercent = changeInPercent;
-            string prefix = changeInPercent > 0 ? "+" : "-";
-            Description = $"{prefix}{changeInPercent}% der jährlichen Aufwände";
+            string suffix = changeInPercent > 0 ? "Aufwandsteigerung" : "Aufwandrückgang";
+            Description = $"{changeInPercent}% {suffix}/Jahr";
         }
 
         public void ApplyModification(int financialYear, AccountYearDto accountPreviousYear, AccountYearDto accountSelectedYear)

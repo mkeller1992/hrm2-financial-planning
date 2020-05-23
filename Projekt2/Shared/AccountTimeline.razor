@@ -17,34 +17,20 @@
     @foreach (AccountYearViewModel m in AccountMultipleYears.YearlyAccounts)
     {
         <td class="@(GetAccCellClassValues(m, GetAccountValue(SelectedERAccountType, m)))">
-            @if (AreChildrenExpanded == false)
+            @if (areChildrenExpanded == false)
             {
-                decimal? roundedVal = Helpers.GetRoundedValue(GetAccountValue(SelectedERAccountType, m));
-                decimal? percentChange = GetAccountChange(SelectedERAccountType, m);
-                string color = GetColor(SelectedERAccountType, m);
+                @(GetRoundedAndFormattedValue(m))
 
-                @Helpers.FormatDecimal(roundedVal)
-
-                <span class="@color">
-                    @if (percentChange == 0)
-                    {
-                        <i class="fas fa-arrow-up fa-rotate-90"></i>
-                    }
-                    else if (percentChange > 0)
-                    {
-                        <i class="fas fa-arrow-up fa-rotate-45"></i>
-                    }
-                    else if (percentChange < 0)
-                    {
-                        <i class="fas fa-arrow-up fa-rotate-135"></i>
-                    }
+                <span class="@GetColor(SelectedERAccountType, m)">
+                    <i class="@(GetArrowTag(m))"></i>
                 </span>
             }
         </td>
     }
 </tr>
 
-@if (AreChildrenExpanded && AccountMultipleYears.Children != null)
+
+@if (areChildrenExpanded && AccountMultipleYears.Children != null)
 {
     foreach (var m in AccountMultipleYears.Children)
     {
@@ -74,16 +60,21 @@
     [CascadingParameter(Name = "CurrentScenario")]
     Scenario CurrentScenario { get; set; }
 
-    public bool AreChildrenExpanded { get; set; }
+    public bool areChildrenExpanded { get; set; }
+    public bool hasNoChildren { get; set; }
 
-    public bool CouldNotFetchChildren { get; set; }
 
+    private string GetRoundedAndFormattedValue(AccountYearViewModel m)
+    {
+        decimal? accountValueRounded = Helpers.GetRoundedValue(GetAccountValue(SelectedERAccountType, m));
+        return Helpers.FormatDecimal(accountValueRounded);
+    }
 
 
     /* Determines whether the account name represents a hyperlink or not */
     private bool HasLink()
     {
-        if (CouldNotFetchChildren)
+        if (hasNoChildren)
         {
             return false;
         }
@@ -147,6 +138,15 @@
     }
 
 
+    private string GetArrowTag(AccountYearViewModel m)
+    {
+        decimal? percentChangeExact = GetAccountChange(SelectedERAccountType, m);
+        bool isFirstYearOfTimeline = m.Year == AccountMultipleYears.SelectedYears[0];
+        string rotationFactor = Helpers.GetDegreeOfRotation(percentChangeExact, isFirstYearOfTimeline);
+        return rotationFactor == null ? "" : $"fas fa-arrow-up fa-rotate-{rotationFactor}";
+    }
+
+
     string GetAccCellClassValues(AccountYearViewModel m, decimal? value)
     {
         string result = $"account-cell-{(m.Year < Const.CurrentYear ? "actual" : "budget")}";
@@ -162,9 +162,9 @@
     {
         if (HasLink())
         {
-            AreChildrenExpanded = !AreChildrenExpanded;
+            areChildrenExpanded = !areChildrenExpanded;
 
-            if (AreChildrenExpanded &&
+            if (areChildrenExpanded &&
                 AccountMultipleYears.Children == null &&
                 Enum.TryParse(SelectedStructureType, out StructureType selectStructureT) &&
                 Enum.TryParse(SelectedERAccountType, out ERAccountType selectErAccT) &&
@@ -183,9 +183,9 @@
                 if (AccountMultipleYears.Children == null || AccountMultipleYears.Children.Count == 0)
                 {
                     // Revers 'expand'-command
-                    AreChildrenExpanded = false;
+                    areChildrenExpanded = false;
                     // Remove link on Account
-                    CouldNotFetchChildren = true;
+                    hasNoChildren = true;
                 }
             }
             StateHasChanged();

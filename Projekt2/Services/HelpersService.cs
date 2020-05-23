@@ -16,7 +16,7 @@ namespace Projekt2.Services
             return $"{number:n0}";
         }
 
-        public string FormatPercentage(decimal? perc, int decimalPlaces = 0)
+        public string FormatPercentage(decimal? perc)
         {
             if (perc == null)
             {
@@ -62,16 +62,44 @@ namespace Projekt2.Services
 
         public decimal? GetPercentageChange(decimal? firstVal, decimal? secondVal)
         {
-            if (firstVal == 0 && secondVal == 0)
+            // if first and second value are == 0 or == null
+            if ((firstVal == 0 || firstVal == null) &&
+                (secondVal == 0 || secondVal == null))
             {
                 return 0;
             }
-            if (firstVal == null || secondVal == null || firstVal == 0)
+            // if only first value is > 0:
+            if (secondVal == 0 || secondVal == null)
+            {
+                return -100;
+            }
+            // if only second value is > 0:
+            if (firstVal == 0 || firstVal == null)
             {
                 return null;
             }
+            // if first and second value are > 0
             var tempRes = decimal.Divide(secondVal.Value - firstVal.Value, Math.Abs(firstVal.Value));
             return decimal.Multiply(tempRes, 100);
+        }
+
+
+        public string GetDegreeOfRotation(decimal? percentChangeExact, bool isFirstYearOfTimeline)
+        {
+            if (percentChangeExact == 0)
+            {
+                return "90";
+            }
+            else if (percentChangeExact > 0 ||
+                    (percentChangeExact == null && isFirstYearOfTimeline == false))
+            {
+                return "45";
+            }
+            else if (percentChangeExact < 0)
+            {
+                return "135";
+            }
+            return null;
         }
 
     }

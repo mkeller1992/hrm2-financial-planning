@@ -4,29 +4,29 @@
 @inject DropdownService DropdownSvc
 @inject IJSRuntime jsRuntime
 
-@using Projekt2.Constants 
+@using Projekt2.Constants
 
 
-@if (IsLoading)
+@if (isLoading)
 {
     <p>Page is loading...</p>
 }
 
-@if (IsLoading == false)
+@if (isLoading == false)
 {
 
     <DropdownStr Label="Gliederungsart"
-                 SelectedValue="@SelectedStructureType"
+                 SelectedValue="@selectedStructureType"
                  Items="DropdownSvc.StructureTypes"
                  SelectionChanged="OnSelectStructureType" />
 
     <DropdownInt Label="Jahr"
-                 SelectedValue="@SelectedYear"
-                 Items="DropdownSvc.Years(RelevantYears)"
+                 SelectedValue="@selectedYear"
+                 Items="DropdownSvc.Years(relevantYears)"
                  SelectionChanged="OnSelectYear" />
 
     <DropdownInt Label="Level"
-                 SelectedValue="@SelectedLevel"
+                 SelectedValue="@selectedLevel"
                  Items="DropdownSvc.Levels"
                  SelectionChanged="OnSelectLevel" />
 
@@ -34,139 +34,91 @@
 
 }
 
-@if (IsLoading == false && ERofYear != null && ERofYear.Accounts != null)
+@if (isLoading == false && erOfYear?.Accounts?.Count > 0)
 {
     <div class="content-scroll-wrap">
         <div class="content-scroll">
             <table class="table account-table-static">
+
+                <!-- Column Titles -->
+
                 <thead>
-                <tr>
-                    <th class="acc-th first-col">
-                        Id / Konto-Name
-                    </th>
-                    @if (SelectedYear >= Const.CurrentYear)
-                    {
-                        <th class="acc-th">
-                            Plan Aufwand
+                    <tr>
+                        <th class="acc-th first-col">
+                            Id / Konto-Name
                         </th>
-                        <th class="acc-th">
-                            Diff.A.
-                        </th>
-                        <th class="acc-th">
-                            Plan Ertrag
-                        </th>
-                        <th class="acc-th">
-                            Diff.B.
-                        </th>
-                        @if (SelectedStructureType == StructureType.Functions.ToString() ||
-                             SelectedStructureType == StructureType.FunctionsThenSubjects.ToString())
-                        {
-                            <th class="acc-th">
-                                Plan Saldo
+                        @{
+                            string optionalClassTag = IsBudgetYear() ? "" : "account-cell-actual";
+
+                            <th class="acc-th @optionalClassTag">
+                                @(IsBudgetYear() ? "Plan Aufwand" : "Aufwand")
                             </th>
-                            <th class="acc-th">
+                            <th class="acc-th @optionalClassTag">
+                                Diff.A.
+                            </th>
+                            <th class="acc-th @optionalClassTag">
+                                @(IsBudgetYear() ? "Plan Ertrag" : "Ertrag")
+                            </th>
+                            <th class="acc-th @optionalClassTag">
+                                Diff.E.
+                            </th>
+                        }
+                        @if (IsFunctionGroupSelected())
+                        {
+                            <th class="acc-th @optionalClassTag">
+                                @(IsBudgetYear() ? "Plan Saldo" : "Saldo")
+                            </th>
+                            <th class="acc-th @optionalClassTag">
                                 Diff.S.
                             </th>
                         }
-                    }
-                    else if (SelectedYear < Const.CurrentYear)
-                    {
-                        <th class="acc-th account-cell-actual">
-                            Aufwand
-                        </th>
-                        <th class="acc-th account-cell-actual">
-                            Diff.A.
-                        </th>
-                        <th class="acc-th account-cell-actual">
-                            Ertrag
-                        </th>
-                        <th class="acc-th account-cell-actual">
-                            Diff.E.
-                        </th>
-                        @if (SelectedStructureType == StructureType.Functions.ToString() ||
-                             SelectedStructureType == StructureType.FunctionsThenSubjects.ToString())
-                        {
-                            <th class="acc-th account-cell-actual">
-                                Saldo
-                            </th>
-                            <th class="acc-th account-cell-actual">
-                                Diff.S.
-                            </th>
-                        }
-                    }
-                </tr>
+                    </tr>
                 </thead>
+
+                <!-- Rows with yearly-values -->
+
                 <tbody>
-
-                @foreach (AccountYearViewModel acc in ERofYear.Accounts)
-                {
-                    <CascadingValue Value="@SelectedStructureType" Name="SelectedStructureType">
+                    @foreach (AccountYearViewModel acc in erOfYear.Accounts)
+                    {
+                        <CascadingValue Value="@selectedStructureType" Name="SelectedStructureType">
                             <AccountStatic AccountYear="acc"
-                                           LevelInGui="1"/>
-                    </CascadingValue>
-                }
-                <tr>
-                    <th class="first-col">
-                        Total
-                    </th>
+                                           LevelInGui="1" />
+                        </CascadingValue>
+                    }
 
-                    @if (SelectedYear >= Const.CurrentYear)
-                    {
-                        <th class="total account-cell-budget">
-                            @(Helpers.FormatDecimal(ERofYear.AccountYearTotals.ExpensesBudgetTotal))
+                    <!-- Row with totals -->
+
+                    <tr>
+                        <th class="first-col">
+                            Total
                         </th>
-                        <th class="total account-cell-budget
-                            @(Helpers.GetColorIfNegativeFav(ERofYear.AccountYearTotals.PercentageChangeExpensesBudgetTotal, 0))">
-                            @(Helpers.FormatPercentage(ERofYear.AccountYearTotals.PercentageChangeExpensesBudgetTotal))
-                        </th>
-                        <th class="total account-cell-budget">
-                            @(Helpers.FormatDecimal(ERofYear.AccountYearTotals.IncomeBudgetTotal))
-                        </th>
-                        <th class="total account-cell-budget
-                            @(Helpers.GetColorIfPositiveFav(ERofYear.AccountYearTotals.PercentageChangeIncomeBudgetTotal, 0))">
-                            @(Helpers.FormatPercentage(ERofYear.AccountYearTotals.PercentageChangeIncomeBudgetTotal))
-                        </th>
-                        @if (SelectedStructureType == StructureType.Functions.ToString() ||
-                             SelectedStructureType == StructureType.FunctionsThenSubjects.ToString())
-                        {
-                            <th class="total account-cell-budget">
-                                @(Helpers.FormatDecimal(ERofYear.AccountYearTotals.BalanceBudgetTotal))
+                        @{
+                            string classSuffix = IsBudgetYear() ? "budget" : "actual";
+
+                            <th class="total account-cell-@classSuffix">
+                                @(Helpers.FormatDecimal(expensesTotal))
                             </th>
-                            <th class="total account-cell-budget
-                            @(Helpers.GetColorIfPositiveFav(ERofYear.AccountYearTotals.PercentageChangeBalanceBudgetTotal, 0))">
-                                @(Helpers.FormatPercentage(ERofYear.AccountYearTotals.PercentageChangeBalanceBudgetTotal))
+                            <th class="total account-cell-@classSuffix @(Helpers.GetColorIfNegativeFav(percentChangeExpensesTotal, 0))">
+                                @(Helpers.FormatPercentage(percentChangeExpensesTotal))
                             </th>
+                            <th class="total account-cell-@classSuffix">
+                                @(Helpers.FormatDecimal(incomeTotal))
+                            </th>
+                            <th class="total account-cell-@classSuffix @(Helpers.GetColorIfPositiveFav(percentChangeIncomeTotal, 0))">
+                                @(Helpers.FormatPercentage(percentChangeIncomeTotal))
+                            </th>
+
+                            @if (IsFunctionGroupSelected())
+                            {
+                                <th class="total account-cell-@classSuffix">
+                                    @(Helpers.FormatDecimal(balanceTotal))
+                                </th>
+                                <th class="total account-cell-@classSuffix @(Helpers.GetColorIfPositiveFav(percentChangeBalanceTotal, 0))">
+                                    @(Helpers.FormatPercentage(percentChangeBalanceTotal))
+                                </th>
+                            }
                         }
-                    }
-                    else if (SelectedYear < Const.CurrentYear)
-                    {
-                        <th class="total account-cell-actual">
-                            @(Helpers.FormatDecimal(ERofYear.AccountYearTotals.ExpensesActualTotal))
-                        </th>
-                        <th class="total account-cell-actual
-                            @(Helpers.GetColorIfNegativeFav(ERofYear.AccountYearTotals.PercentageChangeExpensesActualTotal, 0))">
-                            @(Helpers.FormatPercentage(ERofYear.AccountYearTotals.PercentageChangeExpensesActualTotal))
-                        </th>
-                        <th class="total account-cell-actual">
-                            @(Helpers.FormatDecimal(ERofYear.AccountYearTotals.IncomeActualTotal))
-                        </th>
-                        <th class="total account-cell-actual
-                            @(Helpers.GetColorIfPositiveFav(ERofYear.AccountYearTotals.PercentageChangeIncomeActualTotal, 0))">
-                            @(Helpers.FormatPercentage(ERofYear.AccountYearTotals.PercentageChangeIncomeActualTotal))
-                        </th>
-                        @if (SelectedStructureType == StructureType.Functions.ToString() ||
-                             SelectedStructureType == StructureType.FunctionsThenSubjects.ToString())
-                        {
-                            <th class="total account-cell-actual">
-                                @(Helpers.FormatDecimal(ERofYear.AccountYearTotals.BalanceActualTotal))
-                            </th>
-                            <th class="total account-cell-actual
-                            @(Helpers.GetColorIfPositiveFav(ERofYear.AccountYearTotals.PercentageChangeBalanceActualTotal, 0))">
-                                @(Helpers.FormatPercentage(ERofYear.AccountYearTotals.PercentageChangeBalanceActualTotal))
-                            </th>
-                        }
-                    }
-                </tr>
+                    </tr>
                 </tbody>
             </table>
         </div>
@@ -176,80 +128,128 @@
 
 @code {
 
-    bool IsLoading = true;
+    bool isLoading = true;
 
-    string SelectedStructureType = StructureType.Functions.ToString();
+    YearViewModel erOfYear = null;
+    int selectedYear;
+    List<int> relevantYears;
+    int selectedLevel;
+    string selectedStructureType = null;
 
-    int SelectedYear;
-    int SelectedLevel;
-    List<int> RelevantYears;
-
-    YearViewModel ERofYear { get; set; }
+    // Totals:
+    decimal? expensesTotal = null;
+    decimal? percentChangeExpensesTotal = null;
+    decimal? incomeTotal = null;
+    decimal? percentChangeIncomeTotal = null;
+    decimal? balanceTotal = null;
+    decimal? percentChangeBalanceTotal = null;
 
 
     protected override async Task OnInitializedAsync()
     {
-        SelectedYear = Const.CurrentYear;
-        SelectedLevel = 1;
-        RelevantYears = DataSvc.GetRelevantYears(Const.CurrentYear - 1, ScenarioType.InputData);
+        selectedYear = Const.CurrentYear;
+        selectedStructureType = StructureType.Functions.ToString();
+        selectedLevel = 1;
+        relevantYears = DataSvc.GetRelevantYears(Const.CurrentYear - 1, ScenarioType.InputData);
 
-        ReloadAccounts(SelectedStructureType, SelectedYear, SelectedLevel);
-        IsLoading = false;
+        ReloadAccounts();
+        isLoading = false;
+    }
+
+
+    private void InitializeTotals()
+    {
+        if (IsBudgetYear())
+        {
+            expensesTotal = erOfYear.AccountYearTotals.ExpensesBudgetTotal;
+            percentChangeExpensesTotal = erOfYear.AccountYearTotals.PercentageChangeExpensesBudgetTotal;
+            incomeTotal = erOfYear.AccountYearTotals.IncomeBudgetTotal;
+            percentChangeIncomeTotal = erOfYear.AccountYearTotals.PercentageChangeIncomeBudgetTotal;
+            balanceTotal = erOfYear.AccountYearTotals.BalanceBudgetTotal;
+            percentChangeBalanceTotal = erOfYear.AccountYearTotals.PercentageChangeBalanceBudgetTotal;
+        }
+        else {
+            expensesTotal = erOfYear.AccountYearTotals.ExpensesActualTotal;
+            percentChangeExpensesTotal = erOfYear.AccountYearTotals.PercentageChangeExpensesActualTotal;
+            incomeTotal = erOfYear.AccountYearTotals.IncomeActualTotal;
+            percentChangeIncomeTotal = erOfYear.AccountYearTotals.PercentageChangeIncomeActualTotal;
+            balanceTotal = erOfYear.AccountYearTotals.BalanceActualTotal;
+            percentChangeBalanceTotal = erOfYear.AccountYearTotals.PercentageChangeBalanceActualTotal;
+        }
+    }
+
+
+    private bool IsFunctionGroupSelected()
+    {
+        return selectedStructureType == StructureType.Functions.ToString() ||
+               selectedStructureType == StructureType.FunctionsThenSubjects.ToString();
+    }
+
+
+    private bool IsBudgetYear()
+    {
+        return selectedYear >= Const.CurrentYear;
     }
 
 
     async void OnSelectYear(int inputVal)
     {
-        await jsRuntime.InvokeAsync<string>("console.error", inputVal);
+        await jsRuntime.InvokeAsync<string>("console.log", inputVal);
 
-        if (inputVal != SelectedYear)
+        if (inputVal != selectedYear)
         {
-            SelectedYear = inputVal;
-            ReloadAccounts(SelectedStructureType, SelectedYear, SelectedLevel);
+            selectedYear = inputVal;
+            ReloadAccounts();
         }
     }
+
 
     async void OnSelectLevel(int inputVal)
     {
-        await jsRuntime.InvokeAsync<string>("console.error", inputVal);
+        await jsRuntime.InvokeAsync<string>("console.log", inputVal);
 
-        if (inputVal != SelectedLevel)
+        if (inputVal != selectedLevel)
         {
-            SelectedLevel = inputVal;
-            ReloadAccounts(SelectedStructureType, SelectedYear, SelectedLevel);
+            selectedLevel = inputVal;
+            ReloadAccounts();
         }
     }
+
 
     async void OnSelectStructureType(string inputVal)
     {
-        await jsRuntime.InvokeAsync<string>("console.error", inputVal);
-        if (inputVal != SelectedStructureType)
+        await jsRuntime.InvokeAsync<string>("console.log", inputVal);
+        if (inputVal != selectedStructureType)
         {
-            SelectedStructureType = inputVal;
-            ReloadAccounts(SelectedStructureType, SelectedYear, SelectedLevel);
+            selectedStructureType = inputVal;
+            ReloadAccounts();
         }
     }
 
+
     async void OnSelectAccountRange(string inputVal)
     {
-        await jsRuntime.InvokeAsync<string>("console.error", inputVal);
-        ReloadAccounts(SelectedStructureType, SelectedYear, SelectedLevel);
+        await jsRuntime.InvokeAsync<string>("console.log", inputVal);
+        ReloadAccounts();
     }
 
-    async void ReloadAccounts(string structureType, int year, int level)
-    {
-        await jsRuntime.InvokeAsync<string>("console.error", $"StructureType: {structureType}, Year: {year}, Level: {level}");
 
-        if (year > 2000 &&
-            level > 0 &&
-            Enum.TryParse(structureType, out StructureType structureT))
+    async void ReloadAccounts()
+    {
+        await jsRuntime.InvokeAsync<string>("console.log", $"StructureType: {selectedStructureType}, Year: {selectedYear}, Level: {selectedLevel}");
+
+        if (selectedYear >= Const.OldestFinanceYear &&
+            selectedLevel > 0 &&
+            Enum.TryParse(selectedStructureType, out StructureType structureT))
         {
-            this.IsLoading = true;
+            this.isLoading = true;
             StateHasChanged();
-            ERofYear = await DataSvc.FetchMainGroupsForYearlyER(structureT,
-                                                                SelectedYear,
-                                                                SelectedLevel);
-            this.IsLoading = false;
+            erOfYear = await DataSvc.FetchMainGroupsForYearlyER(structureT,
+                                                            selectedYear,
+                                                            selectedLevel);
+            InitializeTotals();
+
+            this.isLoading = false;
             StateHasChanged();
         }
     }

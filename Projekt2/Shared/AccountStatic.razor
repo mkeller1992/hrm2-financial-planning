@@ -13,57 +13,35 @@
         </a>
     </td>
 
-    @if (AccountYear.Year >= Const.CurrentYear)
-    {
-        <td class="account-cell-budget text-level-@(LevelInGui)">
-            @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.ExpensesBudget))
+    @{
+        string classSuffix = IsBudgetYear() ? "budget" : "actual";
+
+        <td class="account-cell-@classSuffix text-level-@(LevelInGui)">
+            @(areChildrenExpanded ? "" : Helpers.FormatDecimal(expenses))
         </td>
-        <td class="account-cell-budget text-level-@(LevelInGui) @(Helpers.GetColorIfNegativeFav(AccountYear.PercentageChangeExpensesBudget, 0))">
-            @(AreChildrenExpanded ? "" : Helpers.FormatPercentage(AccountYear.PercentageChangeExpensesBudget))
+        <td class="account-cell-@classSuffix text-level-@(LevelInGui) @(Helpers.GetColorIfNegativeFav(percentChangeExpenses, 0))">
+            @(areChildrenExpanded ? "" : Helpers.FormatPercentage(percentChangeExpenses))
         </td>
-        <td class="account-cell-budget text-level-@(LevelInGui)">
-            @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.IncomeBudget))
+        <td class="account-cell-@classSuffix text-level-@(LevelInGui)">
+            @(areChildrenExpanded ? "" : Helpers.FormatDecimal(income))
         </td>
-        <td class="account-cell-budget text-level-@(LevelInGui) @(Helpers.GetColorIfPositiveFav(AccountYear.PercentageChangeIncomeBudget, 0))">
-            @(AreChildrenExpanded ? "" : Helpers.FormatPercentage(AccountYear.PercentageChangeIncomeBudget))
+        <td class="account-cell-@classSuffix text-level-@(LevelInGui) @(Helpers.GetColorIfPositiveFav(percentChangeIncome, 0))">
+            @(areChildrenExpanded ? "" : Helpers.FormatPercentage(percentChangeIncome))
         </td>
-        @if (SelectedStructureType == StructureType.Functions.ToString() || SelectedStructureType == StructureType.FunctionsThenSubjects.ToString())
+
+        @if (IsFunctionGroupSelected())
         {
-            <td class="account-cell-budget text-level-@(LevelInGui)">
-                @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.BalanceBudget))
+            <td class="account-cell-@classSuffix text-level-@(LevelInGui)">
+                @(areChildrenExpanded ? "" : Helpers.FormatDecimal(balance))
             </td>
-            <td class="account-cell-budget text-level-@(LevelInGui) @(Helpers.GetColorIfPositiveFav(AccountYear.PercentageChangeBalanceBudget, 0))">
-                @(AreChildrenExpanded ? "" : Helpers.FormatPercentage(AccountYear.PercentageChangeBalanceBudget))
-            </td>
-        }
-    }
-    else if (AccountYear.Year < Const.CurrentYear)
-    {
-        <td class="account-cell-actual text-level-@(LevelInGui)">
-            @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.ExpensesActual))
-        </td>
-        <td class="account-cell-actual text-level-@(LevelInGui) @(Helpers.GetColorIfNegativeFav(AccountYear.PercentageChangeExpensesActual, 0))">
-            @(AreChildrenExpanded ? "" : Helpers.FormatPercentage(AccountYear.PercentageChangeExpensesActual))
-        </td>
-        <td class="account-cell-actual text-level-@(LevelInGui)">
-            @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.IncomeActual))
-        </td>
-        <td class="account-cell-actual text-level-@(LevelInGui) @(Helpers.GetColorIfPositiveFav(AccountYear.PercentageChangeIncomeActual, 0))">
-            @(AreChildrenExpanded ? "" : Helpers.FormatPercentage(AccountYear.PercentageChangeIncomeActual))
-        </td>
-        @if (SelectedStructureType == StructureType.Functions.ToString() || SelectedStructureType == StructureType.FunctionsThenSubjects.ToString())
-        {
-            <td class="account-cell-actual text-level-@(LevelInGui)">
-                @(AreChildrenExpanded ? "" : Helpers.FormatDecimal(AccountYear.BalanceActual))
-            </td>
-            <td class="account-cell-actual text-level-@(LevelInGui) @(Helpers.GetColorIfPositiveFav(AccountYear.PercentageChangeBalanceActual, 0))">
-                @(AreChildrenExpanded ? "" : Helpers.FormatPercentage(AccountYear.PercentageChangeBalanceActual))
+            <td class="account-cell-@classSuffix text-level-@(LevelInGui) @(Helpers.GetColorIfPositiveFav(percentChangeBalance, 0))">
+                @(areChildrenExpanded ? "" : Helpers.FormatPercentage(percentChangeBalance))
             </td>
         }
     }
 </tr>
 
-@if (AreChildrenExpanded && AccountYear.ChildAccounts != null)
+@if (areChildrenExpanded && AccountYear.ChildAccounts != null)
 {
     foreach (var a in AccountYear.ChildAccounts)
     {
@@ -84,15 +62,44 @@
     [CascadingParameter(Name = "SelectedStructureType")]
     string SelectedStructureType { get; set; }
 
-    public bool AreChildrenExpanded { get; set; }
+    public bool areChildrenExpanded = false;
+    public bool hasNoChildren = false;
 
-    public bool CouldNotFetchChildren { get; set; }
+    // Values:
+    decimal? expenses = null;
+    decimal? percentChangeExpenses = null;
+    decimal? income = null;
+    decimal? percentChangeIncome = null;
+    decimal? balance = null;
+    decimal? percentChangeBalance = null;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsBudgetYear())
+        {
+            expenses = AccountYear.ExpensesBudget;
+            percentChangeExpenses = AccountYear.PercentageChangeExpensesBudget;
+            income = AccountYear.IncomeBudget;
+            percentChangeIncome = AccountYear.PercentageChangeIncomeBudget;
+            balance = AccountYear.BalanceBudget;
+            percentChangeBalance = AccountYear.PercentageChangeBalanceBudget;
+        }
+        else {
+            expenses = AccountYear.ExpensesActual;
+            percentChangeExpenses = AccountYear.PercentageChangeExpensesActual;
+            income = AccountYear.IncomeActual;
+            percentChangeIncome = AccountYear.PercentageChangeIncomeActual;
+            balance = AccountYear.BalanceActual;
+            percentChangeBalance = AccountYear.PercentageChangeBalanceActual;
+        }
+    }
 
 
     /* Determines whether the account name represents a hyperlink or not */
     private bool HasLink()
     {
-        if (CouldNotFetchChildren)
+        if (hasNoChildren)
         {
             return false;
         }
@@ -105,13 +112,26 @@
     }
 
 
+    private bool IsFunctionGroupSelected()
+    {
+        return SelectedStructureType == StructureType.Functions.ToString() ||
+               SelectedStructureType == StructureType.FunctionsThenSubjects.ToString();
+    }
+
+
+    private bool IsBudgetYear()
+    {
+        return AccountYear.Year >= Const.CurrentYear;
+    }
+
+
     async void OnAccountClicked()
     {
         if (HasLink())
         {
-            AreChildrenExpanded = !AreChildrenExpanded;
+            areChildrenExpanded = !areChildrenExpanded;
 
-            if (AreChildrenExpanded &&
+            if (areChildrenExpanded &&
                 AccountYear.ChildAccounts == null &&
                 Enum.TryParse(SelectedStructureType, out StructureType structureType))
             {
@@ -121,14 +141,13 @@
                 if (AccountYear.ChildAccounts == null || AccountYear.ChildAccounts.Count == 0)
                 {
                     // Revers 'expand'-command
-                    AreChildrenExpanded = false;
+                    areChildrenExpanded = false;
                     // Remove link on Account
-                    CouldNotFetchChildren = true;
+                    hasNoChildren = true;
                 }
             }
             StateHasChanged();
         }
-
     }
 
 

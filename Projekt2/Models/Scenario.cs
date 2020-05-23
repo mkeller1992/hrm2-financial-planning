@@ -1,4 +1,5 @@
-﻿using Projekt2.ViewModels;
+﻿using Projekt2.Constants;
+using Projekt2.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,11 +15,12 @@ namespace Projekt2.Models
 
         public Scenario(int financialYear)
         {
-            FinancialYear = financialYear;
-            if (financialYear > 2000)
+            if (financialYear < Const.OldestFinanceYear || financialYear > Const.NewestFinancialYear)
             {
-                BudgetYears = Enumerable.Range(financialYear + 1, Constants.Const.NumberOfRelevantBudgetYears).ToList();
+                throw new Exception($"Invalid financial year: Only {Const.OldestFinanceYear} to {Const.NewestFinancialYear} allowed!");
             }
+            FinancialYear = financialYear;
+            BudgetYears = Enumerable.Range(financialYear + 1, Const.NumberOfRelevantBudgetYears).ToList();
             ModificationUnits = new List<ModificationUnit>();
         }
 

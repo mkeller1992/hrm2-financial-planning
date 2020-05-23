@@ -4,51 +4,55 @@
 @inject HelpersService Helpers
 @inject DropdownService DropdownSvc
 @inject IJSRuntime jsRuntime
+@inject NavigationManager NavigationManager
 
 @using Projekt2.Constants
 
 
 
-@if (IsLoading)
+@if (isLoading)
 {
     <p>Page is loading...</p>
 }
 
-@if (IsLoading == false)
+@if (isLoading == false)
 {
     <DropdownStr Label="Gliederungsart"
-                 SelectedValue="@SelectedStructureType"
+                 SelectedValue="@selectedStructureType"
                  Items="DropdownSvc.StructureTypes"
-                 DisabledKeys="DisabledStructures"
+                 DisabledKeys="disabledStructures"
                  SelectionChanged="OnSelectStructureType" />
 
     <DropdownStr Label="Werte-Art"
-                 SelectedValue="@SelectedERAccountType"
+                 SelectedValue="@selectedERAccountType"
                  Items="DropdownSvc.ERAccountTypes"
-                 DisabledKeys="DisabledERAccountTypes"
+                 DisabledKeys="disabledERAccountTypes"
                  SelectionChanged="OnSelectERAccountType" />
 
     <DropdownInt Label="Level"
-                 SelectedValue="@SelectedLevel"
+                 SelectedValue="@selectedLevel"
                  Items="DropdownSvc.Levels"
                  SelectionChanged="OnSelectLevel" />
 
 
-    @if (IsInScenarioMode)
+    @if (isInScenarioMode)
     {
         <DropdownStr Label="Input-Daten vs. Szenario"
-                     SelectedValue="@SelectedScenarioType"
+                     SelectedValue="@selectedScenarioType"
                      Items="DropdownSvc.ScenarioTypes"
                      SelectionChanged="OnSelectScenarioType" />
 
-
-        <button style="display: inline-block" @onclick="() => CreateNewScenario.InvokeAsync(null)">Create new scenario</button>
+        <button class="btn btn-outline-dark"
+                style="display: inline-block"
+                @onclick="() => OnCreateNewScenario()">
+            Neues Szenario
+        </button>
     }
 
     <hr />
 }
 
-@if (IsLoading == false && ERDataForMultipleYears != null)
+@if (isLoading == false && erDataForMultipleYears != null)
 {
     <div class="content-scroll-wrap">
         <div class="content-scroll">
@@ -59,7 +63,7 @@
                         <th class="acc-th first-th">
                             Id / Konto-Name
                         </th>
-                        @foreach (int y in ERDataForMultipleYears.SelectedYears)
+                        @foreach (int y in erDataForMultipleYears.SelectedYears)
                         {
                             <th class="acc-th">
                                 @(y < Const.CurrentYear ? "Rg Jahr" :"Plan" ) @y
@@ -69,11 +73,11 @@
                 </thead>
                 <tbody>
 
-                    @foreach (AccountMultipleYearsViewModel acc in ERDataForMultipleYears.AccountsWithMultipleYears)
+                    @foreach (AccountMultipleYearsViewModel acc in erDataForMultipleYears.AccountsWithMultipleYears)
                     {
-                        <CascadingValue Value="@SelectedStructureType" Name="SelectedStructureType">
-                            <CascadingValue Value="@SelectedERAccountType" Name="SelectedERAccountType">
-                                <CascadingValue Value="@SelectedScenarioType" Name="SelectedScenarioType">
+                        <CascadingValue Value="@selectedStructureType" Name="SelectedStructureType">
+                            <CascadingValue Value="@selectedERAccountType" Name="SelectedERAccountType">
+                                <CascadingValue Value="@selectedScenarioType" Name="SelectedScenarioType">
                                     <AccountTimeline AccountMultipleYears="acc"
                                                      LevelInGui="1" />
                                 </CascadingValue>
@@ -82,13 +86,18 @@
                     }
                     <tr>
                         <th class="first-col">
-                            @(SelectedERAccountType == ERAccountType.Balances.ToString() ? "Gesamt-Differenz" : "Total")
+                            @(selectedERAccountType == ERAccountType.Balances.ToString() ? "Gesamt-Differenz" : "Total")
                         </th>
 
-                        @foreach (YearTotalsViewModel m in ERDataForMultipleYears.ListOfAccountYearTotals)
+                        @foreach (YearTotalsViewModel m in erDataForMultipleYears.ListOfAccountYearTotals)
                         {
-                            <th class="@(GetTotalCellClassValues(m, GetTotalValue(SelectedERAccountType, m)))">
-                                @(Helpers.FormatDecimal(GetTotalValue(SelectedERAccountType, m)))
+                            <th class="total account-cell-@(m.Year < Const.CurrentYear ? "actual" : "budget")">
+
+                                @(GetRoundedAndFormattedTotal(m))
+
+                                <span class="@GetColor(selectedERAccountType, m)">
+                                    <i class="@(GetArrowTag(m))"></i>
+                                </span>
                             </th>
                         }
                     </tr>
@@ -100,61 +109,50 @@
 
 @code {
 
-    bool IsLoading = true;
-    bool IsInScenarioMode = false;
-
     [CascadingParameter(Name = "CurrentScenario")]
-    Scenario CurrentScenario { get; set; }
+    Scenario currentScenario { get; set; }
 
-    [Parameter]
-    public EventCallback CreateNewScenario { get; set; }
+    string selectedStructureType = StructureType.Functions.ToString();
+    string selectedERAccountType = ERAccountType.Expenses.ToString();
+    string selectedScenarioType = null;
 
-    List<int> SelectedYears { get; set; }
+    bool isLoading = true;
 
-    string SelectedStructureType = StructureType.Functions.ToString();
-    string SelectedERAccountType = ERAccountType.Expenses.ToString();
-    string SelectedScenarioType = null;
-    int SelectedLevel;
-
-    List<string> DisabledStructures = new List<string>();
-    List<string> DisabledERAccountTypes = new List<string>();
-
-    MultipleYearsViewModel ERDataForMultipleYears { get; set; }
+    MultipleYearsViewModel erDataForMultipleYears = null;
+    bool isInScenarioMode = false;
+    int selectedLevel;
+    List<string> disabledStructures = new List<string>();
+    List<string> disabledERAccountTypes = new List<string>();
 
 
     protected override async Task OnInitializedAsync()
     {
-        SelectedScenarioType = ScenarioType.InputData.ToString();
+        selectedScenarioType = ScenarioType.InputData.ToString();
 
-        if (CurrentScenario != null)
+        if (currentScenario != null)
         {
-            SelectedScenarioType = ScenarioType.Scenario.ToString();
-            IsInScenarioMode = true;
+            selectedScenarioType = ScenarioType.Scenario.ToString();
+            isInScenarioMode = true;
         }
 
-        this.SelectedLevel = 1;
-        SetDisabledStructureTypes(SelectedERAccountType);
-        SetDisabledERAccountTypes(SelectedStructureType);
+        this.selectedLevel = 1;
+        SetDisabledStructureTypes(selectedERAccountType);
+        SetDisabledERAccountTypes(selectedStructureType);
 
         await ReloadAccounts();
 
-        IsLoading = false;
+        isLoading = false;
     }
 
 
-    string GetTotalCellClassValues(YearTotalsViewModel m, decimal? value)
+    private string GetRoundedAndFormattedTotal(YearTotalsViewModel m)
     {
-        string result = $"total account-cell-{(m.Year < Const.CurrentYear ? "actual" : "budget")}";
-
-        if (SelectedERAccountType == ERAccountType.Balances.ToString())
-        {
-            result += Helpers.IsPositive(value) ? " pos-value" : " neg-value";
-        }
-        return result;
+        decimal? totalRounded = Helpers.GetRoundedValue(GetTotalValue(selectedERAccountType, m));
+        return Helpers.FormatDecimal(totalRounded);
     }
 
 
-    decimal? GetTotalValue(string type, YearTotalsViewModel m)
+    private decimal? GetTotalValue(string type, YearTotalsViewModel m)
     {
         if (Enum.TryParse(type, out ERAccountType eRAccountType))
         {
@@ -170,26 +168,75 @@
     }
 
 
-    async void OnSelectStructureType(string inputVal)
+    private decimal? GetPercentChangeOfTotal(string type, YearTotalsViewModel m)
     {
-        await jsRuntime.InvokeAsync<string>("console.error", inputVal);
-        if (inputVal != SelectedStructureType)
+        if (Enum.TryParse(type, out ERAccountType accType))
+        {
+            return accType switch
+            {
+                ERAccountType.Expenses => m.Year < Const.CurrentYear ? m.PercentageChangeExpensesActualTotal :
+                                                                       m.PercentageChangeExpensesBudgetTotal,
+                ERAccountType.Income => m.Year < Const.CurrentYear ? m.PercentageChangeIncomeActualTotal :
+                                                                     m.PercentageChangeIncomeBudgetTotal,
+                ERAccountType.Balances => m.Year < Const.CurrentYear ? m.PercentageChangeBalanceActualTotal :
+                                                                       m.PercentageChangeBalanceBudgetTotal,
+                _ => null
+            };
+        }
+        return null;
+    }
+
+
+    private string GetColor(string type, YearTotalsViewModel m)
+    {
+        var h = Helpers;
+
+        if (Enum.TryParse(type, out ERAccountType accType))
+        {
+            return accType switch
+            {
+                ERAccountType.Expenses => m.Year < Const.CurrentYear ? h.GetColorIfNegativeFav(m.PercentageChangeExpensesActualTotal) :
+                                                                         h.GetColorIfNegativeFav(m.PercentageChangeExpensesBudgetTotal),
+                ERAccountType.Income => m.Year < Const.CurrentYear ? h.GetColorIfPositiveFav(m.PercentageChangeIncomeActualTotal) :
+                                                                       h.GetColorIfPositiveFav(m.PercentageChangeIncomeBudgetTotal),
+                ERAccountType.Balances => m.Year < Const.CurrentYear ? h.GetColorIfPositiveFav(m.PercentageChangeBalanceActualTotal) :
+                                                                         h.GetColorIfPositiveFav(m.PercentageChangeBalanceBudgetTotal),
+                _ => null
+            };
+        }
+        return null;
+    }
+
+
+    private string GetArrowTag(YearTotalsViewModel m)
+    {
+        decimal? percentChangeExact = GetPercentChangeOfTotal(selectedERAccountType, m);
+        bool isFirstYearOfTimeline = m.Year == erDataForMultipleYears.SelectedYears[0];
+        string rotationFactor = Helpers.GetDegreeOfRotation(percentChangeExact, isFirstYearOfTimeline);
+        return rotationFactor == null ? "" : $"fas fa-arrow-up fa-rotate-{rotationFactor}";
+    }
+
+
+    private async void OnSelectStructureType(string inputVal)
+    {
+        await jsRuntime.InvokeAsync<string>("console.log", inputVal);
+        if (inputVal != selectedStructureType)
         {
             SetDisabledERAccountTypes(inputVal);
-            SelectedStructureType = inputVal;
+            selectedStructureType = inputVal;
             await ReloadAccounts();
             StateHasChanged(); // Triggers updating of Dropdown with ER-Account-Types
         }
     }
 
 
-    async void OnSelectERAccountType(string inputVal)
+    private async void OnSelectERAccountType(string inputVal)
     {
-        await jsRuntime.InvokeAsync<string>("console.error", inputVal);
-        if (inputVal != SelectedERAccountType)
+        await jsRuntime.InvokeAsync<string>("console.log", inputVal);
+        if (inputVal != selectedERAccountType)
         {
             SetDisabledStructureTypes(inputVal);
-            SelectedERAccountType = inputVal;
+            selectedERAccountType = inputVal;
 
             await ReloadAccounts();
             StateHasChanged();
@@ -197,66 +244,67 @@
     }
 
 
-    async void OnSelectLevel(int inputVal)
+    private async void OnSelectLevel(int inputVal)
     {
-        await jsRuntime.InvokeAsync<string>("console.error", inputVal);
+        await jsRuntime.InvokeAsync<string>("console.log", inputVal);
 
-        if (inputVal != SelectedLevel)
+        if (inputVal != selectedLevel)
         {
-            SelectedLevel = inputVal;
+            selectedLevel = inputVal;
             await ReloadAccounts();
             StateHasChanged();
         }
     }
 
 
-    async void OnSelectScenarioType(string inputVal)
+    private async void OnSelectScenarioType(string inputVal)
     {
-        await jsRuntime.InvokeAsync<string>("console.error", inputVal);
+        await jsRuntime.InvokeAsync<string>("console.log", inputVal);
 
-        if (inputVal != SelectedScenarioType)
+        if (inputVal != selectedScenarioType)
         {
-            SelectedScenarioType = inputVal;
+            selectedScenarioType = inputVal;
             await ReloadAccounts();
         }
+    }
+
+
+    private void OnCreateNewScenario()
+    {
+        NavigationManager.NavigateTo("scenario");
     }
 
 
     private async Task ReloadAccounts()
     {
-        var structureT = SelectedStructureType;
-        var accType = SelectedERAccountType;
-
-
-        await jsRuntime.InvokeAsync<string>
-        ("console.error", $"StructureType: {structureT} ER-Account-Type: {accType}, Level: {SelectedLevel}");
-
-        if (SelectedLevel > 0 &&
-            Enum.TryParse(structureT, out StructureType structureType) &&
-            Enum.TryParse(accType, out ERAccountType erAccountType))
+        if (selectedLevel > 0 &&
+            Enum.TryParse(selectedStructureType, out StructureType structureType) &&
+            Enum.TryParse(selectedERAccountType, out ERAccountType erAccountType))
         {
-            this.IsLoading = true;
+            await jsRuntime.InvokeAsync<string>
+            ("console.log", $"StructureType: {selectedStructureType} ER-Account-Type: {selectedERAccountType}, Level: {selectedLevel}");
+
+            this.isLoading = true;
             StateHasChanged();
 
-            if (SelectedScenarioType == ScenarioType.InputData.ToString())
+            if (selectedScenarioType == ScenarioType.InputData.ToString())
             {
-                this.SelectedYears = DataSvc.GetRelevantYears(Const.CurrentYear - 1, ScenarioType.InputData);
-                ERDataForMultipleYears = await DataSvc.FetchMainGroupsForTimelineEr(structureType,
+                var selectedYears = DataSvc.GetRelevantYears(Const.CurrentYear - 1, ScenarioType.InputData);
+                erDataForMultipleYears = await DataSvc.FetchMainGroupsForTimelineEr(structureType,
                                                                                  erAccountType,
-                                                                                 SelectedYears,
-                                                                                 SelectedLevel);
+                                                                                 selectedYears,
+                                                                                 selectedLevel);
             }
-            else if (SelectedScenarioType == ScenarioType.Scenario.ToString() && CurrentScenario != null)
+            else if (selectedScenarioType == ScenarioType.Scenario.ToString() && currentScenario != null)
             {
-                this.SelectedYears = DataSvc.GetRelevantYears(CurrentScenario.FinancialYear, ScenarioType.Scenario);
-                ERDataForMultipleYears = ScenarioSvc.FetchMainGroupsForTimelineEr(CurrentScenario,
+                var selectedYears = DataSvc.GetRelevantYears(currentScenario.FinancialYear, ScenarioType.Scenario);
+                erDataForMultipleYears = ScenarioSvc.FetchMainGroupsForTimelineEr(currentScenario,
                                                                               structureType,
                                                                               erAccountType,
-                                                                              SelectedYears,
-                                                                              SelectedLevel);
+                                                                              selectedYears,
+                                                                              selectedLevel);
             }
-
-            this.IsLoading = false;
+            this.isLoading = false;
             StateHasChanged();
         }
     }
@@ -266,23 +314,27 @@
     {
         if (selectedERAccountType == ERAccountType.Balances.ToString())
         {
-            DisabledStructures.Add(StructureType.Subjects.ToString());
+            disabledStructures.Add(StructureType.Subjects.ToString());
+            disabledStructures.Add(StructureType.SubjectsThenFunctions.ToString());
+            disabledStructures.Add(StructureType.FunctionsThenSubjects.ToString());
         }
         else
         {
-            DisabledStructures.Clear();
+            disabledStructures.Clear();
         }
     }
 
     private void SetDisabledERAccountTypes(string selectedStructureType)
     {
-        if (selectedStructureType == StructureType.Subjects.ToString())
+        if (selectedStructureType == StructureType.Subjects.ToString() ||
+            selectedStructureType == StructureType.SubjectsThenFunctions.ToString() ||
+            selectedStructureType == StructureType.FunctionsThenSubjects.ToString())
         {
-            DisabledERAccountTypes.Add(ERAccountType.Balances.ToString());
+            disabledERAccountTypes.Add(ERAccountType.Balances.ToString());
         }
         else
         {
-            DisabledERAccountTypes.Clear();
+            disabledERAccountTypes.Clear();
         }
     }
 

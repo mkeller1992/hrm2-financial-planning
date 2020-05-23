@@ -3,45 +3,52 @@
 @inject NavigationManager NavigationManager
 
 <h3>Szenario Generator</h3>
-<div style="height: 15px;"></div>
+<div style="height: 25px;"></div>
 
-<label>
-    Basisjahr eingeben:
-    <input class="form-control"
-           type="number"
-           name="baseyear"
-           @bind="FinancialYear" />
-</label>
+<h5>Basisjahr festlegen</h5>
+<div style="height: 10px;"></div>
 
-<input class="btn btn-success"
-       style="margin-left: 5px;"
-       type="submit"
-       value="Weiter"
-       @onclick="() => { OnSaveFinancialYear(); }" />
+<div class="black-border-chip"
+     style="max-width: 350px;">
+    <label>
+        Finanzjahr
+        <input class="form-control"
+               type="number"
+               name="baseyear"
+               @bind="financialYear" />
+    </label>
+
+    <input class="btn btn-success"
+           style="margin-left: 5px;"
+           type="submit"
+           value="Weiter"
+           @onclick="() => { OnSaveFinancialYear(); }" />
+</div>
+
 
 <div style="height: 10px;"></div>
 
-@if (ShowError)
+@if (showError)
 {
     <p style="color: red;">
-        Das Basisjahr muss mind. 2015 und max. 2018 betragen.
+        Das Basisjahr muss mind. @Const.OldestFinanceYear und max. @Const.NewestFinancialYear betragen.
     </p>
 }
 
 @code {
 
-    int FinancialYear = 2016;
-    bool ShowError = false;
-
+    int financialYear = 2016;
+    bool showError = false;
 
     public void OnSaveFinancialYear()
     {
-        if (FinancialYear >= 2015 && FinancialYear <= 2018)
+        if (financialYear >= Const.OldestFinanceYear && financialYear <= Const.NewestFinancialYear)
         {
-            NavigationManager.NavigateTo($"scenario/settings/{FinancialYear}");
+            NavigationManager.NavigateTo($"scenario/settings/{financialYear}");
         }
-        else {
-            ShowError = true;
+        else
+        {
+            showError = true;
         }
     }
 

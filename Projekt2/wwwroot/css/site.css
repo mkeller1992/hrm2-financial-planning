@@ -197,6 +197,15 @@ app {
 td, th {
     text-align: right;
 }
+    th.align-left,
+    td.align-left {
+        text-align: left;
+    }
+
+    th.align-center,
+    td.align-center {
+        text-align: center;
+    }
 
     td.first-col,
     th.first-col {
@@ -322,19 +331,19 @@ th.acc-th {
 }
 
 .account-label-2 {
-    padding-left: 1rem !important;
+    padding-left: 1.1rem !important;
 }
 
 .account-label-3 {
-    padding-left: 1.25rem !important;
+    padding-left: 1.45rem !important;
 }
 
 .account-label-4 {
-    padding-left: 1.5rem !important;
+    padding-left: 1.8rem !important;
 }
 
 .account-label-5 {
-    padding-left: 1.75rem !important;
+    padding-left: 2.15rem !important;
 }
 
 .account-row-1 {
@@ -374,3 +383,26 @@ th.acc-th {
     -o-transform: rotate(135deg);
     transform: rotate(135deg);
 }
+
+
+/** CSS for scenario pages **/
+
+.black-border-chip {
+    background-color: rgba(0, 0, 255, 0.1);
+    border: 1px solid black;
+    border-radius: 15px;
+    padding: 20px;
+}
+
+.scenario-content-width {
+    width: 650px;
+}
+
+.param-removal-cell {
+    color: red;
+    font-weight: bold;
+    cursor: pointer
+}
+    .param-removal-cell:hover {
+        background-color: rgba(0, 0, 0, 0.13);
+    }
