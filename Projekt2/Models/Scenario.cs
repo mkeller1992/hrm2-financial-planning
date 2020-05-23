@@ -10,7 +10,7 @@ namespace Projekt2.Models
     {
         public int FinancialYear { get; }
         public List<int> BudgetYears { get; }
-        private List<ModificationUnit> _modificationUnits { get; set; }
+        public List<ModificationUnit> ModificationUnits { get; }
 
         public Scenario(int financialYear)
         {
@@ -19,18 +19,18 @@ namespace Projekt2.Models
             {
                 BudgetYears = Enumerable.Range(financialYear + 1, Constants.Const.NumberOfRelevantBudgetYears).ToList();
             }
-            _modificationUnits = new List<ModificationUnit>();
+            ModificationUnits = new List<ModificationUnit>();
         }
 
 
         public void AddModificationUnit(ModificationUnit m)
         {
-            _modificationUnits.Add(m);
+            ModificationUnits.Add(m);
         }
 
         public List<AccountYearDto> AddScenarioAccounts(List<AccountYearDto> accountsForScenario)
         {
-            if (_modificationUnits == null)
+            if (ModificationUnits == null)
             {
                 throw new Exception("No changes defined!");
             }
@@ -45,7 +45,7 @@ namespace Projekt2.Models
                     AddAccountsForYear(accountsForScenario, y);
 
                     // Compute accounts for budget-year y:
-                    foreach (var modifUnit in _modificationUnits)
+                    foreach (var modifUnit in ModificationUnits)
                     {
                         modifUnit.ExecuteChanges(y, FinancialYear, accountsForScenario);
                     }

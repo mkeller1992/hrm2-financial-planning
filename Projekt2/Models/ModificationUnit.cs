@@ -10,13 +10,16 @@ namespace Projekt2.Models
 {
     public class ModificationUnit
     {
-        protected readonly IAccountParams _accountParams;
-        protected readonly IModificationOperation _modificationOperation;
+        public string Title { get; }
 
-        public ModificationUnit(IAccountParams accountParams, IModificationOperation modificationOperation)
+        public IAccountParams AccountParams { get;  }
+        public IModificationOperation ModificationOperation { get; }
+
+        public ModificationUnit(string title, IAccountParams accountParams, IModificationOperation modificationOperation)
         {
-            _accountParams = accountParams;
-            _modificationOperation = modificationOperation;
+            Title = title;
+            AccountParams = accountParams;
+            ModificationOperation = modificationOperation;
         }
 
         public void ExecuteChanges(int selectedYear, int financialYear, List<AccountYearDto> allAccounts)
@@ -36,7 +39,7 @@ namespace Projekt2.Models
                     if (baseAcc.SubjectId == acc.SubjectId &&
                         baseAcc.IdOfParentFunctionGroup == acc.IdOfParentFunctionGroup)
                     {
-                        _modificationOperation.ApplyModification(financialYear, baseAcc, acc);
+                        ModificationOperation.ApplyModification(financialYear, baseAcc, acc);
                     }
                 }
             }
@@ -50,10 +53,10 @@ namespace Projekt2.Models
             {
                 // if subjectId or functionGroupId == null, subjectId resp. functionGroupId is not relevant for the selection
 
-                if ((_accountParams.SubjectId == null ||
-                    _accountParams.SubjectId == acc.SubjectId.Substring(0, _accountParams.SubjectLevel)) &&
-                   (_accountParams.IdOfParentFunctionGroup == null ||
-                   _accountParams.IdOfParentFunctionGroup == acc.IdOfParentFunctionGroup.Substring(0, _accountParams.ParentFunctionGroupLevel)) &&
+                if ((AccountParams.SubjectId == null ||
+                    AccountParams.SubjectId == acc.SubjectId.Substring(0, AccountParams.SubjectLevel)) &&
+                   (AccountParams.IdOfParentFunctionGroup == null ||
+                   AccountParams.IdOfParentFunctionGroup == acc.IdOfParentFunctionGroup.Substring(0, AccountParams.ParentFunctionGroupLevel)) &&
                     acc.Year == year)
                 {
                     relevantAccounts.Add(acc);

@@ -9,6 +9,7 @@ namespace Projekt2.Models.Interfaces
 {
     public interface IModificationOperation
     {
+        public string Description { get; }
         public void ApplyModification(int baseYear, AccountYearDto accountPreviousYear, AccountYearDto accountSelectedYear);
 
     }

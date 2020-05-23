@@ -10,11 +10,15 @@ namespace Projekt2.Models
 {
     public class IncomesChangePercent : IModificationOperation
     {
+        public string Description { get; }
+
         private decimal _changeInPercent;
 
         public IncomesChangePercent(decimal changeInPercent) 
         {
             _changeInPercent = changeInPercent;
+            string prefix = changeInPercent > 0 ? "+" : "-";
+            Description = $"{prefix}{changeInPercent}% der jährlichen Erträge";
         }
 
         public void ApplyModification(int financialYear, AccountYearDto accountPreviousYear, AccountYearDto accountSelectedYear)

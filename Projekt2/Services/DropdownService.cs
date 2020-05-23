@@ -11,7 +11,7 @@ namespace Projekt2.Services
         public Dictionary<int, string> Years(List<int> relevantYears)
         {
             var result = new Dictionary<int, string>();
-            foreach(int y in relevantYears)
+            foreach (int y in relevantYears)
             {
                 result.Add(y, $"{y}");
             }
@@ -28,8 +28,9 @@ namespace Projekt2.Services
 
         public readonly Dictionary<string, string> ScenarioAccountTypes = new Dictionary<string, string>()
                 {
-                    { ERAccountType.Expenses.ToString(), "Aufwände" },
-                    { ERAccountType.Income.ToString(), "Erträge" }
+                    { ERAccountType.Expenses.ToString(), "Alle Aufwände" },
+                    { ERAccountType.Income.ToString(), "Alle Erträge" },
+                    { ERAccountType.ExpensesAndIncomes.ToString(), "Alle Aufwände und Erträge" }
                 };
 
         public readonly Dictionary<string, string> ScenarioTypes = new Dictionary<string, string>()

@@ -1,135 +1,48 @@
 ﻿
 @page "/scenario"
-@inject DropdownService DropdownSvc
+@inject NavigationManager NavigationManager
 
-@if (IsInputModeActive && IsFinancialYearSet == false)
+<h3>Szenario Generator</h3>
+<div style="height: 15px;"></div>
+
+<label>
+    Basisjahr eingeben:
+    <input class="form-control"
+           type="number"
+           name="baseyear"
+           @bind="FinancialYear" />
+</label>
+
+<input class="btn btn-success"
+       style="margin-left: 5px;"
+       type="submit"
+       value="Weiter"
+       @onclick="() => { OnSaveFinancialYear(); }" />
+
+<div style="height: 10px;"></div>
+
+@if (ShowError)
 {
-    <h3>Scenario</h3>
-    <input type="number" @bind="FinancialYear" />
-    <input type="button" value="Speichere Finanzjahr" @onclick="() => OnSetFinancialYear()" />
+    <p style="color: red;">
+        Das Basisjahr muss mind. 2015 und max. 2018 betragen.
+    </p>
 }
-
-@if (IsInputModeActive && IsFinancialYearSet)
-{
-    <div>
-        <input type="text" placeholder="Subject: Income Account Id" @bind="SubjectAccountId" />
-    </div>
-    <div>
-        <input type="text" placeholder="Function: Parent Account Id" @bind="ParentFunctionAccountId" />
-    </div>
-    <div>
-        <label>
-            Percent increase:
-            <input type="number" @bind="PercentIncrease" />
-        </label>
-    </div>
-    <div>
-        <DropdownStr Label="Kontoart"
-                     SelectedValue="@SelectedErAccountType"
-                     Items="DropdownSvc.ScenarioAccountTypes"
-                     SelectionChanged="(x) => { SelectedErAccountType = x; }" />
-    </div>
-
-
-    <input type="button" value="Speichere Input" @onclick="() => OnSaveModificationUnit()" />
-
-    <input type="button" value="Wechsle zur Resultate-Ansicht" @onclick="() => OnCalculateScenario()" />
-}
-
-
-@if (IsInputModeActive == false)
-{
-    <CascadingValue Value="@CurrentScenario" Name="CurrentScenario">
-        <TimelineER CreateNewScenario="() => OnCreateNewScenario()" />
-    </CascadingValue>
-}
-
 
 @code {
 
-    Scenario CurrentScenario = null;
-    bool IsInputModeActive = true;
-    bool IsFinancialYearSet = false;
-
     int FinancialYear = 2016;
+    bool ShowError = false;
 
-    string SelectedErAccountType = ERAccountType.Expenses.ToString();
-    string SubjectAccountId = null;
-    string ParentFunctionAccountId = null;
-    decimal PercentIncrease = 0;
 
-    protected override async Task OnInitializedAsync()
+    public void OnSaveFinancialYear()
     {
-
-    }
-
-
-    public void OnSetFinancialYear()
-    {
-        if (FinancialYear > 2000)
+        if (FinancialYear >= 2015 && FinancialYear <= 2018)
         {
-            CurrentScenario = new Scenario(FinancialYear);
-            IsFinancialYearSet = true;
+            NavigationManager.NavigateTo($"scenario/settings/{FinancialYear}");
+        }
+        else {
+            ShowError = true;
         }
     }
-
-
-    public void OnSaveModificationUnit()
-    {
-        if (PercentIncrease != 0 && SelectedErAccountType != null &&
-            (string.IsNullOrEmpty(SubjectAccountId) == false || string.IsNullOrEmpty(ParentFunctionAccountId) == false))
-        {
-            AccountParams parameters = new AccountParams
-            {
-                SubjectId = SubjectAccountId,
-                IdOfParentFunctionGroup = ParentFunctionAccountId
-            };
-
-            IModificationOperation operation = null;
-
-            if (SelectedErAccountType == ERAccountType.Expenses.ToString())
-            {
-                operation = new ExpensesChangePercent(PercentIncrease);
-            }
-            else
-            {
-                operation = new IncomesChangePercent(PercentIncrease);
-            }
-
-            CurrentScenario.AddModificationUnit(new ModificationUnit(parameters, operation));
-            ResetModificationUnitFields();
-        }
-    }
-
-    public void OnCalculateScenario()
-    {
-
-        IsInputModeActive = false;
-    }
-
-    private void OnCreateNewScenario()
-    {
-        ResetAllValues();
-        IsInputModeActive = true;
-        StateHasChanged();
-    }
-
-
-    public void ResetModificationUnitFields()
-    {
-        PercentIncrease = 0;
-        SubjectAccountId = null;
-        ParentFunctionAccountId = null;
-        SelectedErAccountType = ERAccountType.Expenses.ToString();
-    }
-
-    public void ResetAllValues()
-    {
-        CurrentScenario = null;
-        IsFinancialYearSet = false;
-        FinancialYear = 2016;
-        ResetModificationUnitFields();
-    }
-
 
 }

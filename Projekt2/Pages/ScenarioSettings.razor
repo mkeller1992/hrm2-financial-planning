@@ -1,0 +1,310 @@
+﻿@page "/scenario/settings/{financialYear}"
+@inject DropdownService DropdownSvc
+@inject NavigationManager NavigationManager
+
+
+<h3>Szenario Generator</h3>
+<div style="height: 15px;"></div>
+
+
+@if (IsInputModeActive)
+{
+    <div>
+        <input class="form-control"
+               type="text"
+               placeholder="Beschreibung"
+               @bind="ModificationDescription" />
+    </div>
+    <div>
+        <input class="form-control"
+               type="text"
+               placeholder="Sachgruppen-Nummer"
+               value="@SubjectAccountId"
+               @oninput="(x) => OnSubjectIdChange(x)" />
+    </div>
+    <div>
+        <input class="form-control"
+               type="text"
+               placeholder="Funktionsgruppen-Nummer"
+               value="@ParentFunctionAccountId"
+               @oninput="(x) => OnFunctionGroupIdChange(x)" />
+    </div>
+    <div>
+        <label>
+            Prozentuale Veränderung:
+            <input class="form-control"
+                   type="number"
+                   @bind="PercentChange" />
+        </label>
+    </div>
+    @if (IsAccountTypeMenuVisible)
+    {
+        <div>
+            <DropdownStr Label="Kontoart"
+                         SelectedValue="@SelectedErAccountType"
+                         Items="DropdownSvc.ScenarioAccountTypes"
+                         SelectionChanged="(x) => { SelectedErAccountType = x; }" />
+        </div>
+    }
+
+    <input class="btn btn-primary" type="button" value="Eintrag hinzufügen" @onclick="() => OnSaveModificationUnit()" />
+
+    @if (ErrorMessages?.Count > 0)
+    {
+        <div style="height: 10px;"></div>
+        <ul>
+            @foreach (var error in ErrorMessages)
+            {
+                <li style="color: red;">
+                    @error
+                </li>
+            }
+        </ul>
+    }
+    @if (CurrentScenario?.ModificationUnits?.Count > 0)
+    {
+        <div style="height: 25px;"></div>
+        <h3>Bisherige Inputs:</h3>
+        <div style="height: 10px;"></div>
+        foreach (var mUnit in CurrentScenario.ModificationUnits)
+        {
+            <p>
+                @(mUnit.Title), S: @(mUnit.AccountParams.SubjectId), FG: @(mUnit.AccountParams.IdOfParentFunctionGroup), @(mUnit.ModificationOperation.Description)
+            </p>
+        }
+        <div style="height: 10px;"></div>
+        <input class="btn btn-success" type="button" value="Szenario generieren" @onclick="() => OnExecuteCalculations()" />
+    }
+}
+
+
+
+@if (IsInputModeActive == false)
+{
+    <CascadingValue Value="@CurrentScenario" Name="CurrentScenario">
+        <TimelineER CreateNewScenario="() => OnCreateNewScenario()" />
+    </CascadingValue>
+}
+
+
+@code {
+
+    [Parameter]
+    public string financialYear { get; set; }
+
+    Scenario CurrentScenario = null;
+    bool IsInputModeActive = true;
+    bool IsAccountTypeMenuVisible = false;
+
+    int ParameterCount = 1;
+
+    List<string> ErrorMessages = null;
+
+    string ModificationDescription = "Parameter 1";
+    string SelectedErAccountType = ERAccountType.Expenses.ToString();
+    string SubjectAccountId = null;
+    string ParentFunctionAccountId = null;
+    decimal PercentChange = 0;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        bool isValidYear = int.TryParse(financialYear, out int fYear);
+
+        if (isValidYear)
+        {
+            CurrentScenario = new Scenario(fYear);
+        }
+        else
+        {
+            NavigationManager.NavigateTo("scenario");
+        }
+    }
+
+
+    private void OnSubjectIdChange(ChangeEventArgs e)
+    {
+        SubjectAccountId = (string)e.Value;
+
+        if (string.IsNullOrEmpty(SubjectAccountId))
+        {
+            IsAccountTypeMenuVisible = true;
+        }
+        else
+        {
+            IsAccountTypeMenuVisible = false;
+        }
+        StateHasChanged();
+    }
+
+    private void OnFunctionGroupIdChange(ChangeEventArgs e)
+    {
+        ParentFunctionAccountId = (string)e.Value;
+
+        if (string.IsNullOrEmpty(ParentFunctionAccountId) == false && string.IsNullOrEmpty(SubjectAccountId))
+        {
+            IsAccountTypeMenuVisible = true;
+        }
+        else
+        {
+            IsAccountTypeMenuVisible = false;
+        }
+        StateHasChanged();
+    }
+
+    private void OnSaveModificationUnit()
+    {
+        // Validate Inputs:
+        ErrorMessages = CollectErrors();
+
+        if (ErrorMessages.Count > 0)
+        {
+            return;
+        }
+
+        // Assemble Modification-Unit:
+
+        if (string.IsNullOrEmpty(SubjectAccountId) == false || string.IsNullOrEmpty(ParentFunctionAccountId) == false)
+        {
+            if (string.IsNullOrEmpty(SubjectAccountId))
+            {
+                Enum.TryParse(SelectedErAccountType, out ERAccountType erAccType);
+
+                if (erAccType == ERAccountType.Expenses || erAccType == ERAccountType.ExpensesAndIncomes)
+                {
+                    IAccountParams parameters = new AccountParams
+                    {
+                        SubjectId = "3",
+                        IdOfParentFunctionGroup = ParentFunctionAccountId
+                    };
+                    IModificationOperation operation = new ExpensesChangePercent(PercentChange);
+                    CurrentScenario.AddModificationUnit(new ModificationUnit(ModificationDescription, parameters, operation));
+                }
+
+                if (erAccType == ERAccountType.Income || erAccType == ERAccountType.ExpensesAndIncomes)
+                {
+                    IAccountParams parameters = new AccountParams
+                    {
+                        SubjectId = "4",
+                        IdOfParentFunctionGroup = ParentFunctionAccountId
+                    };
+                    IModificationOperation operation = new IncomesChangePercent(PercentChange);
+                    CurrentScenario.AddModificationUnit(new ModificationUnit(ModificationDescription, parameters, operation));
+                }
+            }
+            else
+            {
+                bool isExpensesAccount = SubjectAccountId.Substring(0, 1) == "3";
+
+                if (isExpensesAccount)
+                {
+                    IAccountParams parameters = new AccountParams
+                    {
+                        SubjectId = SubjectAccountId,
+                        IdOfParentFunctionGroup = ParentFunctionAccountId
+                    };
+                    IModificationOperation operation = new ExpensesChangePercent(PercentChange);
+                    CurrentScenario.AddModificationUnit(new ModificationUnit(ModificationDescription, parameters, operation));
+                }
+                else
+                {
+                    IAccountParams parameters = new AccountParams
+                    {
+                        SubjectId = SubjectAccountId,
+                        IdOfParentFunctionGroup = ParentFunctionAccountId
+                    };
+                    IModificationOperation operation = new IncomesChangePercent(PercentChange);
+                    CurrentScenario.AddModificationUnit(new ModificationUnit(ModificationDescription, parameters, operation));
+                }
+            }
+
+            ResetModificationUnitFields();
+
+            ParameterCount++;
+            ModificationDescription = $"Parameter {ParameterCount}";
+            StateHasChanged();
+        }
+    }
+
+
+    private List<string> CollectErrors()
+    {
+        List<string> errors = new List<string>();
+
+        if (PercentChange == 0)
+        {
+            errors.Add("Die prozentuale Veränderung darf nicht 0 betragen.");
+        }
+        if (string.IsNullOrEmpty(ModificationDescription))
+        {
+            errors.Add("Beschreibung fehlt.");
+        }
+        if (string.IsNullOrEmpty(SubjectAccountId) && string.IsNullOrEmpty(ParentFunctionAccountId))
+        {
+            errors.Add("Sachgruppen- und/oder Funktionsgruppen-Kontennummer muss angegeben werden.");
+        }
+        if (string.IsNullOrEmpty(SubjectAccountId) == false)
+        {
+            if (SubjectAccountId.Substring(0, 1) != "3" &&
+                SubjectAccountId.Substring(0, 1) != "4")
+            {
+                errors.Add("Die Sachgruppen-Nummer muss mit 3 oder 4 beginnen.");
+            }
+            if (SubjectAccountId.Length > 4)
+            {
+                errors.Add("Die Sachgruppen-Nummer darf nicht mehr als 4 Ziffern enthalten.");
+            }
+            if (Regex.IsMatch(SubjectAccountId, @"^\d+$") == false)
+            {
+                errors.Add("Die Sachgruppen-Nummer darf nur Nummern enthalten.");
+            }
+        }
+        if (string.IsNullOrEmpty(ParentFunctionAccountId) == false)
+        {
+            if (ParentFunctionAccountId.Length > 4)
+            {
+                errors.Add("Die Funktionsgruppen-Nummer darf nicht mehr als 4 Ziffern enthalten.");
+            }
+            if (Regex.IsMatch(ParentFunctionAccountId, @"^\d+$") == false)
+            {
+                errors.Add("Die Funktionsgruppen-Nummer darf nur Nummern enthalten.");
+            }
+        }
+        return errors;
+    }
+
+
+    private void OnExecuteCalculations()
+    {
+        ResetModificationUnitFields();
+        IsInputModeActive = false;
+    }
+
+
+    private void OnCreateNewScenario()
+    {
+        ResetAllValues();
+        IsInputModeActive = true;
+        StateHasChanged();
+    }
+
+
+    private void ResetModificationUnitFields()
+    {
+        ModificationDescription = null;
+        ErrorMessages = null;
+        SubjectAccountId = null;
+        ParentFunctionAccountId = null;
+        PercentChange = 0;
+        SelectedErAccountType = ERAccountType.Expenses.ToString();
+    }
+
+    private void ResetAllValues()
+    {
+        ResetModificationUnitFields();
+        CurrentScenario = null;
+        ParameterCount = 1;
+        ModificationDescription = "Parameter 1";
+    }
+
+}
