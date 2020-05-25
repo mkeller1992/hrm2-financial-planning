@@ -27,9 +27,16 @@ namespace Projekt2.Services
             return $"{prefix}{roundedPercentage}%";
         }
 
-        public string GetColorIfPositiveFav(decimal? n, int roundValueToNumberOfDigits = -1)
+        public string GetColorIfPositiveFav(decimal? percentChange, int roundValueToNumberOfDigits = -1)
         {
-            decimal number = n == null ? 0 : roundValueToNumberOfDigits == - 1 ? n.Value : GetRoundedValue(n, roundValueToNumberOfDigits).Value;
+            // null stands for value-increase from null or zero to > 0
+            if (percentChange == null)
+            {
+                return "green";
+            }
+
+            decimal number = roundValueToNumberOfDigits == - 1 ? percentChange.Value :
+                                                                 GetRoundedValue(percentChange, roundValueToNumberOfDigits).Value;
             if (number == 0)
             {
                 return "";
@@ -37,9 +44,16 @@ namespace Projekt2.Services
             return number > 0 ? "green" : "red";
         }
 
-        public string GetColorIfNegativeFav(decimal? n, int roundValueToNumberOfDigits = -1)
+        public string GetColorIfNegativeFav(decimal? percentChange, int roundValueToNumberOfDigits = -1)
         {
-            decimal number = n == null ? 0 : roundValueToNumberOfDigits == -1 ? n.Value : GetRoundedValue(n, roundValueToNumberOfDigits).Value;
+            // null stands for value-increase from null or zero to > 0
+            if (percentChange == null)
+            {
+                return "red";
+            }
+
+            decimal number = roundValueToNumberOfDigits == -1 ? percentChange.Value : 
+                                                                GetRoundedValue(percentChange, roundValueToNumberOfDigits).Value;
             if (number == 0)
             {
                 return "";

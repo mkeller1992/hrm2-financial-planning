@@ -1,4 +1,5 @@
-﻿using Projekt2.DbModels;
+﻿using Projekt2.Constants;
+using Projekt2.DbModels;
 using Projekt2.Models.Interfaces;
 using Projekt2.ViewModels;
 using System;
@@ -17,8 +18,8 @@ namespace Projekt2.Models
         public ExpensesChangePercent(decimal changeInPercent)
         {
             _changeInPercent = changeInPercent;
-            string suffix = changeInPercent > 0 ? "Aufwandsteigerung" : "Aufwandrückgang";
-            Description = $"{changeInPercent}% {suffix}/Jahr";
+            string suffix = changeInPercent > 0 ? Const.DescrPercentExpensesIncrease : Const.DescrPercentExpensesDecrease;
+            Description = $"{changeInPercent}{suffix}";
         }
 
         public void ApplyModification(int financialYear, AccountYearDto accountPreviousYear, AccountYearDto accountSelectedYear)
