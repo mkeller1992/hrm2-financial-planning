@@ -11,7 +11,7 @@
 <div class="black-border-chip"
      style="max-width: 350px;">
     <label>
-        Finanzjahr
+        Basisjahr
         <input class="form-control"
                type="number"
                name="baseyear"
@@ -42,7 +42,8 @@
 
     public void OnSaveFinancialYear()
     {
-        if (financialYear >= Const.OldestFinanceYear && financialYear <= Const.NewestFinancialYear)
+        if (financialYear >= Const.OldestFinanceYear &&
+            financialYear <= Const.NewestFinancialYear)
         {
             NavigationManager.NavigateTo($"scenario/settings/{financialYear}");
         }

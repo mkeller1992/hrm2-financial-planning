@@ -87,15 +87,28 @@
     }
 
 
+    private bool IsBudgetYear(int y)
+    {
+        if (SelectedScenarioType == ScenarioType.Scenario.ToString())
+        {
+            return y != CurrentScenario.FinancialYear;
+        }
+        else
+        {
+            return y >= Const.CurrentYear;
+        }
+    }
+
+
     decimal? GetAccountValue(string type, AccountYearViewModel m)
     {
         if (Enum.TryParse(type, out ERAccountType accType))
         {
             return accType switch
             {
-                ERAccountType.Expenses => m.Year < Const.CurrentYear ? m.ExpensesActual : m.ExpensesBudget,
-                ERAccountType.Income => m.Year < Const.CurrentYear ? m.IncomeActual : m.IncomeBudget,
-                ERAccountType.Balances => m.Year < Const.CurrentYear ? m.BalanceActual : m.BalanceBudget,
+                ERAccountType.Expenses => IsBudgetYear(m.Year) ? m.ExpensesBudget : m.ExpensesActual,
+                ERAccountType.Income => IsBudgetYear(m.Year) ? m.IncomeBudget : m.IncomeActual,
+                ERAccountType.Balances => IsBudgetYear(m.Year) ? m.BalanceBudget : m.BalanceActual,
                 _ => null
             };
         }
@@ -108,9 +121,9 @@
         {
             return accType switch
             {
-                ERAccountType.Expenses => m.Year < Const.CurrentYear ? m.PercentageChangeExpensesActual : m.PercentageChangeExpensesBudget,
-                ERAccountType.Income => m.Year < Const.CurrentYear ? m.PercentageChangeIncomeActual : m.PercentageChangeIncomeBudget,
-                ERAccountType.Balances => m.Year < Const.CurrentYear ? m.PercentageChangeBalanceActual : m.PercentageChangeBalanceBudget,
+                ERAccountType.Expenses => IsBudgetYear(m.Year) ? m.PercentageChangeExpensesBudget : m.PercentageChangeExpensesActual,
+                ERAccountType.Income => IsBudgetYear(m.Year) ? m.PercentageChangeIncomeBudget : m.PercentageChangeIncomeActual,
+                ERAccountType.Balances => IsBudgetYear(m.Year) ? m.PercentageChangeBalanceBudget : m.PercentageChangeBalanceActual,
                 _ => null
             };
         }
@@ -125,12 +138,12 @@
         {
             return accType switch
             {
-                ERAccountType.Expenses => m.Year < Const.CurrentYear ? h.GetColorIfNegativeFav(m.PercentageChangeExpensesActual) :
-                                                                         h.GetColorIfNegativeFav(m.PercentageChangeExpensesBudget),
-                ERAccountType.Income => m.Year < Const.CurrentYear ? h.GetColorIfPositiveFav(m.PercentageChangeIncomeActual) :
-                                                                       h.GetColorIfPositiveFav(m.PercentageChangeIncomeBudget),
-                ERAccountType.Balances => m.Year < Const.CurrentYear ? h.GetColorIfPositiveFav(m.PercentageChangeBalanceActual) :
-                                                                         h.GetColorIfPositiveFav(m.PercentageChangeBalanceBudget),
+                ERAccountType.Expenses => IsBudgetYear(m.Year) ? h.GetColorIfNegativeFav(m.PercentageChangeExpensesBudget):
+                                                                 h.GetColorIfNegativeFav(m.PercentageChangeExpensesActual),
+                ERAccountType.Income => IsBudgetYear(m.Year) ? h.GetColorIfPositiveFav(m.PercentageChangeIncomeBudget):
+                                                               h.GetColorIfPositiveFav(m.PercentageChangeIncomeActual),
+                ERAccountType.Balances => IsBudgetYear(m.Year) ? h.GetColorIfPositiveFav(m.PercentageChangeBalanceBudget):
+                                                                 h.GetColorIfPositiveFav(m.PercentageChangeBalanceActual),
                 _ => null
             };
         }
@@ -149,7 +162,7 @@
 
     string GetAccCellClassValues(AccountYearViewModel m, decimal? value)
     {
-        string result = $"account-cell-{(m.Year < Const.CurrentYear ? "actual" : "budget")}";
+        string result = $"account-cell-{(IsBudgetYear(m.Year) ? "budget" : "actual")}";
         result += $" text-level-{LevelInGui}";
         if (SelectedERAccountType == ERAccountType.Balances.ToString())
         {
@@ -173,11 +186,18 @@
 
                 if (selectScenarioT == ScenarioType.InputData)
                 {
-                    AccountMultipleYears.Children = await DataSvc.FetchSubGroupsForTimelineEr(AccountMultipleYears, selectStructureT, selectErAccT);
+                    int mostRecentFinancialYear = (Const.CurrentYear - 1);
+                    AccountMultipleYears.Children = await DataSvc.FetchSubGroupsForTimelineEr(AccountMultipleYears,
+                                                                                              selectStructureT,
+                                                                                              selectErAccT,
+                                                                                              mostRecentFinancialYear);
                 }
                 else if (selectScenarioT == ScenarioType.Scenario && CurrentScenario != null)
                 {
-                    AccountMultipleYears.Children = ScenarioSvc.FetchSubGroupsForTimelineEr(CurrentScenario, AccountMultipleYears, selectStructureT, selectErAccT);
+                    AccountMultipleYears.Children = ScenarioSvc.FetchSubGroupsForTimelineEr(CurrentScenario,
+                                                                                            AccountMultipleYears,
+                                                                                            selectStructureT,
+                                                                                            selectErAccT);
                 }
 
                 if (AccountMultipleYears.Children == null || AccountMultipleYears.Children.Count == 0)

@@ -132,6 +132,7 @@
 
     YearViewModel erOfYear = null;
     int selectedYear;
+    int mostRecentFinancialYear;
     List<int> relevantYears;
     int selectedLevel;
     string selectedStructureType = null;
@@ -148,6 +149,7 @@
     protected override async Task OnInitializedAsync()
     {
         selectedYear = Const.CurrentYear;
+        mostRecentFinancialYear = Const.CurrentYear - 1;
         selectedStructureType = StructureType.Functions.ToString();
         selectedLevel = 1;
         relevantYears = DataSvc.GetRelevantYears(Const.CurrentYear - 1, ScenarioType.InputData);
@@ -245,8 +247,9 @@
             this.isLoading = true;
             StateHasChanged();
             erOfYear = await DataSvc.FetchMainGroupsForYearlyER(structureT,
-                                                            selectedYear,
-                                                            selectedLevel);
+                                                                mostRecentFinancialYear,
+                                                                selectedYear,
+                                                                selectedLevel);
             InitializeTotals();
 
             this.isLoading = false;

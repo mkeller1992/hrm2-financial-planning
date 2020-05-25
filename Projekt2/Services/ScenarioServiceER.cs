@@ -40,7 +40,11 @@ namespace Projekt2.Services
             List<AccountYearViewModel> allAccounts = GetQueryForErAccounts(baseAccounts, selectedType, selectedYears, selectedLevel).ToList();
             bool isFunctionGroups = selectedType == StructureType.Functions || selectedType == StructureType.FunctionsThenSubjects;
 
-            return _dataSvc.AssembleMultiYearsAccountModels(isFunctionGroups, erAccountType, selectedYears, allAccounts);
+            return _dataSvc.AssembleMultiYearsAccountModels(isFunctionGroups,
+                                                            erAccountType,
+                                                            selectedYears,
+                                                            scenario.FinancialYear,
+                                                            allAccounts);
         }
 
 
@@ -70,7 +74,11 @@ namespace Projekt2.Services
                                                                                                  .ToList();
 
                 bool isFunctionGroups = selectedType == StructureType.SubjectsThenFunctions;
-                multiYearsModel = _dataSvc.AssembleMultiYearsAccountModels(isFunctionGroups, selectedERAccountType, accMultiYears.SelectedYears, allAccounts);
+                multiYearsModel = _dataSvc.AssembleMultiYearsAccountModels(isFunctionGroups,
+                                                                           selectedERAccountType,
+                                                                           accMultiYears.SelectedYears,
+                                                                           scenario.FinancialYear,
+                                                                           allAccounts);
 
                 foreach (AccountMultipleYearsViewModel acc in multiYearsModel.AccountsWithMultipleYears)
                 {
@@ -91,9 +99,10 @@ namespace Projekt2.Services
 
                 bool isFunctionGroups = selectedType == StructureType.Functions;
                 multiYearsModel = _dataSvc.AssembleMultiYearsAccountModels(isFunctionGroups,
-                                                                            selectedERAccountType,
-                                                                            accMultiYears.SelectedYears,
-                                                                            allAccounts);
+                                                                           selectedERAccountType,
+                                                                           accMultiYears.SelectedYears,
+                                                                           scenario.FinancialYear,
+                                                                           allAccounts);
             }
             return multiYearsModel?.AccountsWithMultipleYears ?? null;
         }
@@ -237,7 +246,7 @@ namespace Projekt2.Services
 
         private List<AccountYearDto> GetBaseAndScenarioYears(Scenario scenario)
         {
-            int financialYear = Const.CurrentYear - 1;
+            int financialYear = scenario.FinancialYear;
             var accountsOfBaselineYear = GetErAccountsForBaselineYear(financialYear);
             var allBaseAndScenarioAccounts = scenario.AddScenarioAccounts(accountsOfBaselineYear);
             return allBaseAndScenarioAccounts;

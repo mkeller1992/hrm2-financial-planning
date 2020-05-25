@@ -63,7 +63,10 @@ namespace Projekt2.Services
 
 
         /** Yearly ER - Fetch main-groups **/
-        public async Task<YearViewModel> FetchMainGroupsForYearlyER(StructureType selectedType, int selectedYear, int selectedLevel)
+        public async Task<YearViewModel> FetchMainGroupsForYearlyER(StructureType selectedType,
+                                                                    int mostRecentFinancialYear,
+                                                                    int selectedYear,
+                                                                    int selectedLevel)
         {
             int previousYear = selectedYear - 1;
             var years = new List<int> { previousYear, selectedYear };
@@ -74,9 +77,9 @@ namespace Projekt2.Services
             List<AccountYearViewModel> accountsForPreviousYear = allAccounts.Where(a => a.Year == previousYear).OrderBy(a => a.AccountId).ToList();
             List<AccountYearViewModel> accountsForSelectedYear = allAccounts.Where(a => a.Year == selectedYear).OrderBy(a => a.AccountId).ToList();
 
-            SetPercentChangesBetweenTwoYears(accountsForPreviousYear, accountsForSelectedYear, selectedYear);
+            SetPercentChangesBetweenTwoYears(accountsForPreviousYear, accountsForSelectedYear, mostRecentFinancialYear, selectedYear);
 
-            YearTotalsViewModel totalsForSelectedYear = GetTotalsForYears(years, allAccounts).FirstOrDefault(y => y.Year == selectedYear);
+            YearTotalsViewModel totalsForSelectedYear = GetTotalsForYears(years, allAccounts, mostRecentFinancialYear).FirstOrDefault(y => y.Year == selectedYear);
 
             return new YearViewModel
             {
@@ -88,9 +91,10 @@ namespace Projekt2.Services
 
 
         /** Yearly ER - Fetch SUB-groups **/
-        public async Task<List<AccountYearViewModel>> FetchSubGroupsForYearlyEr(AccountYearViewModel ayear, StructureType selectedType)
+        public async Task<List<AccountYearViewModel>> FetchSubGroupsForYearlyEr(AccountYearViewModel ayear,
+                                                                                StructureType selectedType,
+                                                                                int mostRecentFinancialYear)
         {
-
             // If user is in mixed-structureTypes mode:
             if (selectedType == StructureType.SubjectsThenFunctions || selectedType == StructureType.FunctionsThenSubjects)
             {
@@ -105,23 +109,28 @@ namespace Projekt2.Services
                                                                         idOfParentInSuperordinateStructure,
                                                                         ayear.AccountId,
                                                                         levelOfAccountsToFetch,
+                                                                        mostRecentFinancialYear,
                                                                         ayear.Year);
             }
 
             // If user is in subjects-mode or in functions-mode:
-            YearViewModel m = await FetchMainGroupsForYearlyER(selectedType, ayear.Year, (ayear.AccountLevel) + 1);
+            YearViewModel m = await FetchMainGroupsForYearlyER(selectedType,
+                                                               mostRecentFinancialYear,
+                                                               ayear.Year,
+                                                               (ayear.AccountLevel) + 1);
+
             return m.Accounts.Where(a => a.AccountId.Substring(0, ayear.AccountLevel) == ayear.AccountId).ToList();
         }
-
 
 
         /* Fetch sub-groups if selected mode is 'function-accounts with underlying subject-accounts' */
         private async Task<List<AccountYearViewModel>> FetchSubGroupsInMixedStructureInYearlyER(StructureType structureType,
                                                                                                 ERAccountType erAccountType,
-                                                                                                   string idOfParentInSuperordinateStructure,
-                                                                                                   string idOfSelectedAccount,
-                                                                                                   int levelOfSubordinatedAccounts,
-                                                                                                   int selectedYear)
+                                                                                                string idOfParentInSuperordinateStructure,
+                                                                                                string idOfSelectedAccount,
+                                                                                                int levelOfSubordinatedAccounts,
+                                                                                                int mostRecentFinancialYear,
+                                                                                                int selectedYear)
         {
             int previousYear = selectedYear - 1;
             List<int> years = new List<int> { previousYear, selectedYear };
@@ -131,7 +140,10 @@ namespace Projekt2.Services
             List<AccountYearViewModel> accountsForPreviousYear = await query.Where(a => a.Year == previousYear).ToListAsync();
             List<AccountYearViewModel> accountsForSelectedYear = await query.Where(a => a.Year == selectedYear).ToListAsync();
 
-            SetPercentChangesBetweenTwoYears(accountsForPreviousYear, accountsForSelectedYear, selectedYear);
+            SetPercentChangesBetweenTwoYears(accountsForPreviousYear,
+                                             accountsForSelectedYear,
+                                             mostRecentFinancialYear,
+                                             selectedYear);
 
             // Add id of superordinate subject-account:
             foreach (var acc in accountsForSelectedYear)
@@ -147,6 +159,7 @@ namespace Projekt2.Services
         public async Task<MultipleYearsViewModel> FetchMainGroupsForTimelineEr(StructureType selectedType,
                                                                                ERAccountType erAccountType,
                                                                                List<int> selectedYears,
+                                                                               int mostRecentFinancialYear,
                                                                                int selectedLevel)
         {
             var query = GetQueryForErAccounts(selectedType, selectedYears, selectedLevel);
@@ -155,14 +168,19 @@ namespace Projekt2.Services
             List<AccountYearViewModel> allAccounts = await query.ToListAsync();
             bool isFunctionGroups = selectedType == StructureType.Functions || selectedType == StructureType.FunctionsThenSubjects;
 
-            return AssembleMultiYearsAccountModels(isFunctionGroups, erAccountType, selectedYears, allAccounts);
+            return AssembleMultiYearsAccountModels(isFunctionGroups,
+                                                   erAccountType,
+                                                   selectedYears,
+                                                   mostRecentFinancialYear,
+                                                   allAccounts);
         }
 
 
         /** Timeline ER - Fetch SUB-groups **/
         public async Task<List<AccountMultipleYearsViewModel>> FetchSubGroupsForTimelineEr(AccountMultipleYearsViewModel accMultiYears, 
                                                                                            StructureType selectedType,
-                                                                                           ERAccountType selectedERAccountType)
+                                                                                           ERAccountType selectedERAccountType,
+                                                                                           int mostRecentFinancialYear)
         {
             string selectedAccountId = accMultiYears.AccountId;
             MultipleYearsViewModel multiYearsModel = null;
@@ -181,7 +199,11 @@ namespace Projekt2.Services
                                                                                          .ToListAsync();
 
                 bool isFunctionGroups = selectedType == StructureType.SubjectsThenFunctions;
-                multiYearsModel = AssembleMultiYearsAccountModels(isFunctionGroups, selectedERAccountType, accMultiYears.SelectedYears, allAccounts);                
+                multiYearsModel = AssembleMultiYearsAccountModels(isFunctionGroups,
+                                                                  selectedERAccountType,
+                                                                  accMultiYears.SelectedYears,
+                                                                  mostRecentFinancialYear,
+                                                                  allAccounts);                
 
                 foreach (AccountMultipleYearsViewModel acc in multiYearsModel.AccountsWithMultipleYears)
                 {
@@ -199,9 +221,12 @@ namespace Projekt2.Services
                                                                     .ToListAsync();
 
                 bool isFunctionGroups = selectedType == StructureType.Functions;
-                multiYearsModel = AssembleMultiYearsAccountModels(isFunctionGroups, selectedERAccountType, accMultiYears.SelectedYears, allAccounts);
+                multiYearsModel = AssembleMultiYearsAccountModels(isFunctionGroups, 
+                                                                  selectedERAccountType,
+                                                                  accMultiYears.SelectedYears,
+                                                                  mostRecentFinancialYear,
+                                                                  allAccounts);
             }
-
             return multiYearsModel?.AccountsWithMultipleYears ?? null;
         }
 
@@ -336,9 +361,9 @@ namespace Projekt2.Services
 
         private void SetPercentChangesBetweenTwoYears(List<AccountYearViewModel> accountsForPreviousYear,
                                                       List<AccountYearViewModel> accountsForSelectedYear,
+                                                      int mostRecentFinancialYear,
                                                       int selectedYear)
         {
-
             foreach (AccountYearViewModel acc in accountsForSelectedYear)
             {
                 // For account-group-items which had no partner in LEFT-JOIN the year was not yet set:
@@ -348,7 +373,7 @@ namespace Projekt2.Services
 
                 if (accInPrevYear != null)
                 {
-                    SetPercentChangesBetweenTwoYears(accInPrevYear, acc, selectedYear);
+                    SetPercentChangesBetweenTwoYears(accInPrevYear, acc, mostRecentFinancialYear, selectedYear);
                 }
             }
         }
@@ -358,6 +383,7 @@ namespace Projekt2.Services
         internal MultipleYearsViewModel AssembleMultiYearsAccountModels(bool isFunctionGroups,
                                                                        ERAccountType erAccountType,
                                                                        List<int> selectedYears,
+                                                                       int mostRecentFinancialYear,
                                                                        List<AccountYearViewModel> allAccounts)
         {
             List<string> accountIds = new List<string>();
@@ -392,7 +418,7 @@ namespace Projekt2.Services
                                      .ToList();
             }
 
-            List<YearTotalsViewModel> totalsForSelectedYears = GetTotalsForYears(selectedYears, allAccounts);
+            List<YearTotalsViewModel> totalsForSelectedYears = GetTotalsForYears(selectedYears, allAccounts, mostRecentFinancialYear);
 
             var result = new MultipleYearsViewModel
             {
@@ -440,7 +466,7 @@ namespace Projekt2.Services
                     // add percent change compared to previous year:
                     if (i > 0)
                     {
-                        SetPercentChangesBetweenTwoYears(yearlyAccounts[i - 1], yearlyAccounts[i], selectedYears[i]);
+                        SetPercentChangesBetweenTwoYears(yearlyAccounts[i - 1], yearlyAccounts[i], mostRecentFinancialYear, selectedYears[i]);
                     }
                 }
 
@@ -462,22 +488,23 @@ namespace Projekt2.Services
 
         private void SetPercentChangesBetweenTwoYears(AccountYearViewModel accPreviousYear,
                                                       AccountYearViewModel accSelectedYear,
+                                                      int mostRecentFinancialYear,
                                                       int selectedYear)
         {
-            if (selectedYear < Const.CurrentYear)
+            if (selectedYear <= mostRecentFinancialYear)
             {
                 accSelectedYear.PercentageChangeExpensesActual = _helpers.GetPercentageChange(accPreviousYear.ExpensesActual, accSelectedYear.ExpensesActual);
                 accSelectedYear.PercentageChangeIncomeActual = _helpers.GetPercentageChange(accPreviousYear.IncomeActual, accSelectedYear.IncomeActual);
                 accSelectedYear.PercentageChangeBalanceActual = _helpers.GetPercentageChange(accPreviousYear.BalanceActual, accSelectedYear.BalanceActual);
             }
-            else if (selectedYear == Const.CurrentYear)
+            else if (selectedYear == (mostRecentFinancialYear + 1))
             {
                 accSelectedYear.PercentageChangeExpensesBudget = _helpers.GetPercentageChange(accPreviousYear.ExpensesActual, accSelectedYear.ExpensesBudget);
                 accSelectedYear.PercentageChangeIncomeBudget = _helpers.GetPercentageChange(accPreviousYear.IncomeActual, accSelectedYear.IncomeBudget);
                 accSelectedYear.PercentageChangeBalanceBudget = _helpers.GetPercentageChange(accPreviousYear.BalanceActual, accSelectedYear.BalanceBudget);
 
             }
-            else if (selectedYear > Const.CurrentYear)
+            else if (selectedYear > (mostRecentFinancialYear + 1))
             {
                 accSelectedYear.PercentageChangeExpensesBudget = _helpers.GetPercentageChange(accPreviousYear.ExpensesBudget, accSelectedYear.ExpensesBudget);
                 accSelectedYear.PercentageChangeIncomeBudget = _helpers.GetPercentageChange(accPreviousYear.IncomeBudget, accSelectedYear.IncomeBudget);
@@ -486,7 +513,9 @@ namespace Projekt2.Services
         }
 
 
-        private List<YearTotalsViewModel> GetTotalsForYears(List<int> years, List<AccountYearViewModel> allAccounts)
+        private List<YearTotalsViewModel> GetTotalsForYears(List<int> years,
+                                                            List<AccountYearViewModel> allAccounts,
+                                                            int mostRecentFinancialYear)
         {
             List<YearTotalsViewModel> totalsForSelectedYears = new List<YearTotalsViewModel>();
 
@@ -519,19 +548,19 @@ namespace Projekt2.Services
                     YearTotalsViewModel totalsOfPY = totalsForSelectedYears[i - 1];
                     ts.HasPreviousYear = true;
 
-                    if (years[i] < Const.CurrentYear)
+                    if (years[i] <= mostRecentFinancialYear)
                     {
                         ts.PercentageChangeExpensesActualTotal = _helpers.GetPercentageChange(totalsOfPY.ExpensesActualTotal, ts.ExpensesActualTotal);
                         ts.PercentageChangeIncomeActualTotal = _helpers.GetPercentageChange(totalsOfPY.IncomeActualTotal, ts.IncomeActualTotal);
                         ts.PercentageChangeBalanceActualTotal = _helpers.GetPercentageChange(totalsOfPY.BalanceActualTotal, ts.BalanceActualTotal);
                     }
-                    else if (years[i] == Const.CurrentYear)
+                    else if (years[i] == (mostRecentFinancialYear + 1))
                     {
                         ts.PercentageChangeExpensesBudgetTotal = _helpers.GetPercentageChange(totalsOfPY.ExpensesActualTotal, ts.ExpensesBudgetTotal);
                         ts.PercentageChangeIncomeBudgetTotal = _helpers.GetPercentageChange(totalsOfPY.IncomeActualTotal, ts.IncomeBudgetTotal);
                         ts.PercentageChangeBalanceBudgetTotal = _helpers.GetPercentageChange(totalsOfPY.BalanceActualTotal, ts.BalanceBudgetTotal);
                     }
-                    else if (years[i] > Const.CurrentYear)
+                    else if (years[i] > (mostRecentFinancialYear + 1))
                     {
                         ts.PercentageChangeExpensesBudgetTotal = _helpers.GetPercentageChange(totalsOfPY.ExpensesBudgetTotal, ts.ExpensesBudgetTotal);
                         ts.PercentageChangeIncomeBudgetTotal = _helpers.GetPercentageChange(totalsOfPY.IncomeBudgetTotal, ts.IncomeBudgetTotal);

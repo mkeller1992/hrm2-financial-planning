@@ -238,24 +238,26 @@
             {
                 Enum.TryParse(selectedErAccountType, out ERAccountType erAccType);
 
-                if (erAccType == ERAccountType.Expenses || erAccType == ERAccountType.ExpensesAndIncomes)
+                if (erAccType == ERAccountType.Expenses)
                 {
                     IAccountParams parameters = new AccountParams
                     {
                         SubjectId = "3",
                         IdOfParentFunctionGroup = parentFunctionAccountId
                     };
+
                     IModificationOperation operation = new ExpensesChangePercent(percentChange);
                     currentScenario.AddModificationUnit(new ModificationUnit(modificationDescription, parameters, operation));
                 }
 
-                if (erAccType == ERAccountType.Income || erAccType == ERAccountType.ExpensesAndIncomes)
+                if (erAccType == ERAccountType.Income)
                 {
                     IAccountParams parameters = new AccountParams
                     {
                         SubjectId = "4",
                         IdOfParentFunctionGroup = parentFunctionAccountId
                     };
+
                     IModificationOperation operation = new IncomesChangePercent(percentChange);
                     currentScenario.AddModificationUnit(new ModificationUnit(modificationDescription, parameters, operation));
                 }

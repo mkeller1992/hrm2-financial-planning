@@ -29,8 +29,7 @@ namespace Projekt2.Services
         public readonly Dictionary<string, string> ScenarioAccountTypes = new Dictionary<string, string>()
                 {
                     { ERAccountType.Expenses.ToString(), "Alle Aufwände" },
-                    { ERAccountType.Income.ToString(), "Alle Erträge" },
-                    { ERAccountType.ExpensesAndIncomes.ToString(), "Alle Aufwände und Erträge" }
+                    { ERAccountType.Income.ToString(), "Alle Erträge" }
                 };
 
         public readonly Dictionary<string, string> ScenarioTypes = new Dictionary<string, string>()

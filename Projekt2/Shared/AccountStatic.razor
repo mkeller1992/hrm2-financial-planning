@@ -135,8 +135,10 @@
                 AccountYear.ChildAccounts == null &&
                 Enum.TryParse(SelectedStructureType, out StructureType structureType))
             {
+                int mostRecentFinancialYear = (Const.CurrentYear - 1);
                 AccountYear.ChildAccounts = await DataSvc.FetchSubGroupsForYearlyEr(AccountYear,
-                                                                                          structureType);
+                                                                                    structureType,
+                                                                                    mostRecentFinancialYear);
 
                 if (AccountYear.ChildAccounts == null || AccountYear.ChildAccounts.Count == 0)
                 {

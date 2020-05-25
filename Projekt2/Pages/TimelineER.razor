@@ -35,7 +35,7 @@
                  SelectionChanged="OnSelectLevel" />
 
 
-    @if (isInScenarioMode)
+    @if (isScenarioMode)
     {
         <DropdownStr Label="Input-Daten vs. Szenario"
                      SelectedValue="@selectedScenarioType"
@@ -66,7 +66,7 @@
                         @foreach (int y in erDataForMultipleYears.SelectedYears)
                         {
                             <th class="acc-th">
-                                @(y < Const.CurrentYear ? "Rg Jahr" :"Plan" ) @y
+                                @(IsBudgetYear(y) ? "Plan" : "Rg Jahr" ) @y
                             </th>
                         }
                     </tr>
@@ -91,7 +91,7 @@
 
                         @foreach (YearTotalsViewModel m in erDataForMultipleYears.ListOfAccountYearTotals)
                         {
-                            <th class="total account-cell-@(m.Year < Const.CurrentYear ? "actual" : "budget")">
+                            <th class="total account-cell-@(IsBudgetYear(m.Year) ? "budget" : "actual")">
 
                                 @(GetRoundedAndFormattedTotal(m))
 
@@ -117,9 +117,9 @@
     string selectedScenarioType = null;
 
     bool isLoading = true;
+    bool isScenarioMode = false;
 
     MultipleYearsViewModel erDataForMultipleYears = null;
-    bool isInScenarioMode = false;
     int selectedLevel;
     List<string> disabledStructures = new List<string>();
     List<string> disabledERAccountTypes = new List<string>();
@@ -129,10 +129,11 @@
     {
         selectedScenarioType = ScenarioType.InputData.ToString();
 
+
         if (currentScenario != null)
         {
+            isScenarioMode = true;
             selectedScenarioType = ScenarioType.Scenario.ToString();
-            isInScenarioMode = true;
         }
 
         this.selectedLevel = 1;
@@ -142,6 +143,19 @@
         await ReloadAccounts();
 
         isLoading = false;
+    }
+
+
+    private bool IsBudgetYear(int y)
+    {
+        if (selectedScenarioType == ScenarioType.Scenario.ToString())
+        {
+            return y != currentScenario.FinancialYear;
+        }
+        else
+        {
+            return y >= Const.CurrentYear;
+        }
     }
 
 
@@ -158,9 +172,9 @@
         {
             return eRAccountType switch
             {
-                ERAccountType.Expenses => m.Year < Const.CurrentYear ? m.ExpensesActualTotal : m.ExpensesBudgetTotal,
-                ERAccountType.Income => m.Year < Const.CurrentYear ? m.IncomeActualTotal : m.IncomeBudgetTotal,
-                ERAccountType.Balances => m.Year < Const.CurrentYear ? m.BalanceActualTotal : m.BalanceBudgetTotal,
+                ERAccountType.Expenses => IsBudgetYear(m.Year) ? m.ExpensesBudgetTotal : m.ExpensesActualTotal,
+                ERAccountType.Income => IsBudgetYear(m.Year) ? m.IncomeBudgetTotal : m.IncomeActualTotal,
+                ERAccountType.Balances => IsBudgetYear(m.Year) ? m.BalanceBudgetTotal : m.BalanceActualTotal,
                 _ => null
             };
         }
@@ -174,12 +188,12 @@
         {
             return accType switch
             {
-                ERAccountType.Expenses => m.Year < Const.CurrentYear ? m.PercentageChangeExpensesActualTotal :
-                                                                       m.PercentageChangeExpensesBudgetTotal,
-                ERAccountType.Income => m.Year < Const.CurrentYear ? m.PercentageChangeIncomeActualTotal :
-                                                                     m.PercentageChangeIncomeBudgetTotal,
-                ERAccountType.Balances => m.Year < Const.CurrentYear ? m.PercentageChangeBalanceActualTotal :
-                                                                       m.PercentageChangeBalanceBudgetTotal,
+                ERAccountType.Expenses => IsBudgetYear(m.Year) ? m.PercentageChangeExpensesBudgetTotal:
+                                                                 m.PercentageChangeExpensesActualTotal,
+                ERAccountType.Income => IsBudgetYear(m.Year) ? m.PercentageChangeIncomeBudgetTotal:
+                                                               m.PercentageChangeIncomeActualTotal,
+                ERAccountType.Balances => IsBudgetYear(m.Year) ? m.PercentageChangeBalanceBudgetTotal:
+                                                                 m.PercentageChangeBalanceActualTotal ,
                 _ => null
             };
         }
@@ -195,12 +209,12 @@
         {
             return accType switch
             {
-                ERAccountType.Expenses => m.Year < Const.CurrentYear ? h.GetColorIfNegativeFav(m.PercentageChangeExpensesActualTotal) :
-                                                                         h.GetColorIfNegativeFav(m.PercentageChangeExpensesBudgetTotal),
-                ERAccountType.Income => m.Year < Const.CurrentYear ? h.GetColorIfPositiveFav(m.PercentageChangeIncomeActualTotal) :
-                                                                       h.GetColorIfPositiveFav(m.PercentageChangeIncomeBudgetTotal),
-                ERAccountType.Balances => m.Year < Const.CurrentYear ? h.GetColorIfPositiveFav(m.PercentageChangeBalanceActualTotal) :
-                                                                         h.GetColorIfPositiveFav(m.PercentageChangeBalanceBudgetTotal),
+                ERAccountType.Expenses => IsBudgetYear(m.Year) ? h.GetColorIfNegativeFav(m.PercentageChangeExpensesBudgetTotal):
+                                                                 h.GetColorIfNegativeFav(m.PercentageChangeExpensesActualTotal),
+                ERAccountType.Income => IsBudgetYear(m.Year) ? h.GetColorIfPositiveFav(m.PercentageChangeIncomeBudgetTotal):
+                                                               h.GetColorIfPositiveFav(m.PercentageChangeIncomeActualTotal),
+                ERAccountType.Balances => IsBudgetYear(m.Year) ? h.GetColorIfPositiveFav(m.PercentageChangeBalanceBudgetTotal):
+                                                                 h.GetColorIfPositiveFav(m.PercentageChangeBalanceActualTotal),
                 _ => null
             };
         }
@@ -290,19 +304,21 @@
             if (selectedScenarioType == ScenarioType.InputData.ToString())
             {
                 var selectedYears = DataSvc.GetRelevantYears(Const.CurrentYear - 1, ScenarioType.InputData);
+                var mostRecentFinancialYear = Const.CurrentYear - 1;
                 erDataForMultipleYears = await DataSvc.FetchMainGroupsForTimelineEr(structureType,
-                                                                                 erAccountType,
-                                                                                 selectedYears,
-                                                                                 selectedLevel);
+                                                                                    erAccountType,
+                                                                                    selectedYears,
+                                                                                    mostRecentFinancialYear,
+                                                                                    selectedLevel);
             }
             else if (selectedScenarioType == ScenarioType.Scenario.ToString() && currentScenario != null)
             {
                 var selectedYears = DataSvc.GetRelevantYears(currentScenario.FinancialYear, ScenarioType.Scenario);
                 erDataForMultipleYears = ScenarioSvc.FetchMainGroupsForTimelineEr(currentScenario,
-                                                                              structureType,
-                                                                              erAccountType,
-                                                                              selectedYears,
-                                                                              selectedLevel);
+                                                                                  structureType,
+                                                                                  erAccountType,
+                                                                                  selectedYears,
+                                                                                  selectedLevel);
             }
             this.isLoading = false;
             StateHasChanged();
