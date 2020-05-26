@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 using Projekt2.Constants;
 using Projekt2.Models;
+using Microsoft.EntityFrameworkCore.Internal;
 
 namespace Projekt2.Services
 {
@@ -61,6 +62,10 @@ namespace Projekt2.Services
             return result;
         }
 
+
+        /*************************************************************/
+        /* Methods that enable the Views to fetch the desired accounts
+        /*************************************************************/
 
         /** Yearly ER - Fetch main-groups **/
         public async Task<YearViewModel> FetchMainGroupsForYearlyER(StructureType selectedType,
@@ -178,16 +183,18 @@ namespace Projekt2.Services
                 int levelOfSubordinatedAccounts = accMultiYears.IdOfParentInSuperordinateStructure == null ? 1 : (accMultiYears.AccountLevel + 1);
 
                 allAccounts = await GetQueryForErSubAccountsInMixedStructure(selectedType,
-                                                                                         selectedERAccountType,
-                                                                                         idOfParentInSuperordinateStructure,
-                                                                                         accMultiYears.AccountId,
-                                                                                         levelOfSubordinatedAccounts,
-                                                                                         accMultiYears.SelectedYears)
-                                                                                         .ToListAsync();          
+                                                                             selectedERAccountType,
+                                                                             idOfParentInSuperordinateStructure,
+                                                                             accMultiYears.AccountId,
+                                                                             levelOfSubordinatedAccounts,
+                                                                             accMultiYears.SelectedYears)
+                                                                             .ToListAsync();          
             }
             else if (selectedType == StructureType.Functions || selectedType == StructureType.Subjects)
             {
-                var query = GetQueryForErAccounts(isFunctionGroups, accMultiYears.SelectedYears, (accMultiYears.AccountLevel + 1));
+                var query = GetQueryForErAccounts(isFunctionGroups,
+                                                 accMultiYears.SelectedYears,
+                                                 (accMultiYears.AccountLevel + 1));
 
                 // accounts contains all accounts as a flat list:
                 // Pick all accounts, whose id starts with the clicked account's id
@@ -196,10 +203,10 @@ namespace Projekt2.Services
             }
 
             MultipleYearsViewModel multiYearsModel = AssembleMultiYearsAccountModels(isFunctionGroups,
-                                                  selectedERAccountType,
-                                                  accMultiYears.SelectedYears,
-                                                  mostRecentFinancialYear,
-                                                  allAccounts);
+                                                                                     selectedERAccountType,
+                                                                                     accMultiYears.SelectedYears,
+                                                                                     mostRecentFinancialYear,
+                                                                                     allAccounts);
 
             if (selectedType == StructureType.SubjectsThenFunctions || selectedType == StructureType.FunctionsThenSubjects)
             {
@@ -329,7 +336,7 @@ namespace Projekt2.Services
 
 
         /*******************************************
-         * Helpers to assemble the final ViewModels:
+         * Helpers to assemble the final ViewModels
          ******************************************/
 
         private void SetPercentChangesBetweenTwoYears(List<AccountYearViewModel> accountsForPreviousYear,
@@ -354,10 +361,10 @@ namespace Projekt2.Services
 
         /* Assembles models that contain the values of an account for multiple years. */
         internal MultipleYearsViewModel AssembleMultiYearsAccountModels(bool isFunctionGroups,
-                                                                       ERAccountType erAccountType,
-                                                                       List<int> selectedYears,
-                                                                       int mostRecentFinancialYear,
-                                                                       List<AccountYearViewModel> allAccounts)
+                                                                        ERAccountType erAccountType,
+                                                                        List<int> selectedYears,
+                                                                        int mostRecentFinancialYear,
+                                                                        List<AccountYearViewModel> allAccounts)
         {
             List<string> accountIds = new List<string>();
 
@@ -365,9 +372,9 @@ namespace Projekt2.Services
             if (isFunctionGroups)
             {
                 accountIds = allAccounts.Select(a => a.AccountId)
-                                     .OrderBy(a => a)
-                                     .Distinct()
-                                     .ToList();
+                                        .OrderBy(a => a)
+                                        .Distinct()
+                                        .ToList();
             }
             // In case the incoming accounts are subject-groups
             else
@@ -385,10 +392,10 @@ namespace Projekt2.Services
 
                 // all "Aufwand"-accounts resp. "Ertrag"-accounts start with the same number => use this fact for filtering:
                 accountIds = allAccounts.Where(a => allowedFirstDigits.Contains(a.AccountId.Substring(0, 1)))
-                                     .Select(a => a.AccountId)
-                                     .OrderBy(a => a)
-                                     .Distinct()
-                                     .ToList();
+                                        .Select(a => a.AccountId)
+                                        .OrderBy(a => a)
+                                        .Distinct()
+                                        .ToList();
             }
 
             List<YearTotalsViewModel> totalsForSelectedYears = GetTotalsForYears(selectedYears, allAccounts, mostRecentFinancialYear);
@@ -400,17 +407,25 @@ namespace Projekt2.Services
                 AccountsWithMultipleYears = new List<AccountMultipleYearsViewModel>()
             };
 
+            /* There might be account-ids which are only available in certain years:
+               For these cases*/
+
             foreach (var id in accountIds)
             {
                 var yearlyAccounts = new List<AccountYearViewModel>();
                 for (int i = 0; i < selectedYears.Count; i++)
                 {
                     // Check if an account for the given year / id is available
-                    var yearlyAcc = allAccounts.Where(a => a.AccountId == id && a.Year == selectedYears[i]).ToList();
+                    AccountYearViewModel yearlyAcc = allAccounts.FirstOrDefault(a => a.AccountId == id &&
+                                                                                     a.Year == selectedYears[i]);
 
+                    if (yearlyAcc != null)
+                    {
+                        yearlyAccounts.Add(yearlyAcc);
+                    }
                     // If for the given year no account with this id is available, 
                     // create a new account-object based on the infos of another account with the same id (setting expenses and incomes == 0)
-                    if (yearlyAcc.Count == 0)
+                    else
                     {
                         var ya = allAccounts.FirstOrDefault(a => a.AccountId == id);
                         if (ya != null)
@@ -425,14 +440,6 @@ namespace Projekt2.Services
                                 Type = ya.Type
                             });
                         }
-                    }
-                    else if (yearlyAcc.Count == 1)
-                    {
-                        yearlyAccounts.Add(yearlyAcc[0]);
-                    }
-                    else
-                    {
-                        throw new Exception("Too many matching accounts!");
                     }
 
                     // Given there is a previous year,
@@ -454,7 +461,6 @@ namespace Projekt2.Services
                     YearlyAccounts = yearlyAccounts
                 });
             }
-
             return result;
         }
 
