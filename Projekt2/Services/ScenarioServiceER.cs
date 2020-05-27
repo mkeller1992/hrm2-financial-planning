@@ -53,7 +53,7 @@ namespace Projekt2.Services
                                         .ToList();
 
             // For each base-account the corresponding future accounts will be added + the scenario-parameters will be applied:
-            var allBaseAndScenarioAccounts = scenario.AddScenarioAccounts(accountsOfBaselineYear);
+            var allBaseAndScenarioAccounts = scenario.ExtendBaseYearWithComputedScenarioYears(accountsOfBaselineYear);
             return allBaseAndScenarioAccounts;
         }
 

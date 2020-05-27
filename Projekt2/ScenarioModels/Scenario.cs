@@ -30,7 +30,7 @@ namespace Projekt2.Models
             ModificationUnits.Add(m);
         }
 
-        public List<AccountYearDto> AddScenarioAccounts(List<AccountYearDto> accountsForScenario)
+        public List<AccountYearDto> ExtendBaseYearWithComputedScenarioYears(List<AccountYearDto> accountsForScenario)
         {
             if (ModificationUnits == null)
             {
