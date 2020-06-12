@@ -22,7 +22,7 @@ namespace Projekt2.Models
             ModificationOperation = modificationOperation;
         }
 
-        public void ExecuteChanges(int selectedYear, int financialYear, List<AccountYearDto> allAccounts)
+        public void ExecuteModification(int selectedYear, int financialYear, List<AccountYearDto> allAccounts)
         {
             List<AccountYearDto> accountsPreviousYear = GetRelevantAccounts(allAccounts, (selectedYear - 1));
             List<AccountYearDto> accountsSelectedYear = GetRelevantAccounts(allAccounts, selectedYear);

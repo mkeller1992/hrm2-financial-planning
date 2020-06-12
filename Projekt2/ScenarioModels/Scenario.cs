@@ -49,7 +49,7 @@ namespace Projekt2.Models
                     // Compute accounts for budget-year y:
                     foreach (var modifUnit in ModificationUnits)
                     {
-                        modifUnit.ExecuteChanges(y, FinancialYear, accountsForScenario);
+                        modifUnit.ExecuteModification(y, FinancialYear, accountsForScenario);
                     }
                 }
             }
