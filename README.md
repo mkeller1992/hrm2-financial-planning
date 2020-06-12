@@ -1,2 +1,2 @@
-# hrm2-financial-planning
-Tool to support the financial planning of communities
+# Planning Tool for communities
+A proof of concept as part of project 2 at the Bern University of Applied Sciences
